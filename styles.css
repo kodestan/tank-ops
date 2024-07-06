@@ -1,0 +1,25 @@
+* {
+	margin: 0px;
+	box-sizing: border-box;
+}
+
+body {
+	background-color: rgb(20, 20, 20);
+	color: white;
+	height: 100svh;
+	position: relative;
+}
+
+#wrapper {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
+#canvas-wrapper {
+	height: 100%;
+	width: 80%;
+	background-color: rgba(0, 255, 0, 0.3);
+	overflow: hidden;
+	align-self: center;
+}
