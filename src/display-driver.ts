@@ -2,16 +2,24 @@ import { Vector } from "./vector.js";
 import { SPRITES_64, SPRITES_96, SpritePreset, Sprite } from "./sprites.js";
 import { GameState } from "./game-objects.js";
 
+type SpriteConfig = { scale: number; sprites: SpritePreset };
+
 const SPRITES_IMAGE_SRC = "./assets/sprites.png";
 
 class DisplaySettings {
   ctx: CanvasRenderingContext2D;
-  origin: Vector = new Vector(0, 0);
-  spritePresets: { 64: SpritePreset; 96: SpritePreset } = {
-    64: SPRITES_64,
-    96: SPRITES_96,
-  };
-  curPreset: SpritePreset = SPRITES_96;
+  cameraOffset: Vector = new Vector(0, 0);
+  spriteConfigs: SpriteConfig[] = [
+    { scale: 1, sprites: SPRITES_64 }, // 64
+    { scale: 1, sprites: SPRITES_96 }, // 96
+    { scale: 2, sprites: SPRITES_64 }, // 128
+    { scale: 2, sprites: SPRITES_96 }, // 192
+    { scale: 4, sprites: SPRITES_64 }, // 256
+    { scale: 3, sprites: SPRITES_96 }, // 288
+    { scale: 4, sprites: SPRITES_96 }, // 384
+  ];
+  presetIdx: number = 1;
+  curPreset = this.spriteConfigs[this.presetIdx];
 
   constructor(ctx: CanvasRenderingContext2D) {
     this.ctx = ctx;
@@ -31,19 +39,48 @@ class DisplaySettings {
     this.ctx.canvas.height = canvasSize.y;
   }
 
+  public zoom(zoomIn: boolean) {
+    if (zoomIn && this.presetIdx === this.spriteConfigs.length - 1) return;
+    if (!zoomIn && this.presetIdx === 0) return;
+    if (zoomIn) {
+      this.presetIdx++;
+    } else {
+      this.presetIdx--;
+    }
+    const oldHexWidth = this.curPreset.sprites.hexSize.x * this.curPreset.scale;
+
+    this.curPreset = this.spriteConfigs[this.presetIdx];
+
+    const newHexWidth = this.curPreset.sprites.hexSize.x * this.curPreset.scale;
+
+    const center = new Vector(
+      this.ctx.canvas.width,
+      this.ctx.canvas.height,
+    ).mul(0.5);
+
+    this.cameraOffset = this.cameraOffset
+      .sub(center)
+      .mul(newHexWidth / oldHexWidth)
+      .add(center);
+  }
+
+  public addCameraOffset(v: Vector) {
+    this.cameraOffset = this.cameraOffset.add(v);
+  }
+
   public getHexSprite(variant: number): Sprite {
-    return this.curPreset.hexes.light[variant];
+    return this.curPreset.sprites.hexes.light[variant];
   }
 
   public getSiteSprite(variant: number): Sprite {
-    return this.curPreset.sites.light[variant];
+    return this.curPreset.sprites.sites.light[variant];
   }
 
   public getTankSprites(
     angleBody: number,
     angleTurret: number,
   ): { body: Sprite; turret: Sprite } {
-    const len = this.curPreset.tanksBodies.length;
+    const len = this.curPreset.sprites.tanksBodies.length;
     const bodyIdx = Math.min(
       len - 1,
       Math.max(0, Math.round((angleBody / 360) * len)),
@@ -52,20 +89,20 @@ class DisplaySettings {
       len - 1,
       Math.max(0, Math.round((angleTurret / 360) * len)),
     );
-    const body = this.curPreset.tanksBodies[bodyIdx];
-    const turret = this.curPreset.tanksTurrets[turretIdx];
+    const body = this.curPreset.sprites.tanksBodies[bodyIdx];
+    const turret = this.curPreset.sprites.tanksTurrets[turretIdx];
     return { body: body, turret: turret };
   }
 
   public getHexSize(): Vector {
-    return this.curPreset.hexSize;
+    return this.curPreset.sprites.hexSize;
   }
 
   public getScreenCords(p: Vector): Vector {
-    const hexSize = this.curPreset.hexSize;
+    const hexSize = this.curPreset.sprites.hexSize.mul(this.curPreset.scale);
     const y = (p.y * hexSize.y * 3) / 4;
     const x = p.x * hexSize.x + 0.5 * p.y * hexSize.x;
-    return new Vector(x, y);
+    return new Vector(x, y).add(this.cameraOffset);
   }
 }
 
@@ -97,13 +134,24 @@ export class DisplayDriver {
     this.displaySettings.resize();
   }
 
+  public handleZoomIn() {
+    this.displaySettings.zoom(true);
+  }
+
+  public handleZoomOut() {
+    this.displaySettings.zoom(false);
+  }
+
+  public addCameraOffset(v: Vector) {
+    this.displaySettings.addCameraOffset(v);
+  }
+
   private drawSprite(sprite: Sprite, p: Vector) {
-    const screenCords = this.displaySettings
-      .getScreenCords(p)
-      .add(this.gameState.cameraOffset)
-      .round();
-    const start = screenCords.add(sprite.offset);
-    const size = sprite.size;
+    const screenCords = this.displaySettings.getScreenCords(p).round();
+    const scale = this.displaySettings.curPreset.scale;
+    const start = screenCords.add(sprite.offset.mul(scale));
+    const size = sprite.size.mul(scale);
+    this.ctx.imageSmoothingEnabled = false;
     this.ctx.drawImage(
       this.sprites,
       sprite.start.x,

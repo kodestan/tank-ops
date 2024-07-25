@@ -1,13 +1,16 @@
+import { DisplayDriver } from "./display-driver.js";
 import { GameState } from "./game-objects.js";
 import { Vector } from "./vector.js";
 
 export class Grid {
   gameState: GameState;
+  displayDriver: DisplayDriver;
   lastPoint: null | Vector = null;
   isPointerDown = false;
 
-  constructor(gameState: GameState) {
+  constructor(gameState: GameState, displayDriver: DisplayDriver) {
     this.gameState = gameState;
+    this.displayDriver = displayDriver;
   }
 
   handlePointerStart(p: Vector) {
@@ -18,9 +21,7 @@ export class Grid {
   handlePointerMove(p: Vector) {
     if (!this.isPointerDown) return;
     if (this.lastPoint === null) return;
-    this.gameState.cameraOffset = this.gameState.cameraOffset.add(
-      p.sub(this.lastPoint),
-    );
+    this.displayDriver.addCameraOffset(p.sub(this.lastPoint));
     this.lastPoint = p;
   }
 

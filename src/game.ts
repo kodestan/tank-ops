@@ -41,7 +41,7 @@ export class Game {
     this.initEventListeners(canvas);
 
     this.displayDriver = new DisplayDriver(ctx, gameState);
-    this.grid = new Grid(gameState);
+    this.grid = new Grid(gameState, this.displayDriver);
 
     window.addEventListener("resize", () => {
       this.resize();
@@ -68,6 +68,21 @@ export class Game {
       const screenP = elementToScreenCoords(new Vector(e.offsetX, e.offsetY));
       this.handlePointerMove(screenP);
     });
+    canvas.addEventListener("wheel", (e: WheelEvent) => {
+      if (e.deltaY > 0) {
+        this.handleZoomOut();
+        return;
+      }
+      this.handleZoomIn();
+    });
+  }
+
+  private handleZoomIn() {
+    this.displayDriver.handleZoomIn();
+  }
+
+  private handleZoomOut() {
+    this.displayDriver.handleZoomOut();
   }
 
   private handlePointerStart(p: Vector) {
