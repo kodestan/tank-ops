@@ -19,7 +19,6 @@ body {
 #canvas-wrapper {
 	height: 100%;
 	width: 80%;
-	background-color: rgba(0, 255, 0, 0.3);
 	overflow: hidden;
 	align-self: center;
 }
