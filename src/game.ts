@@ -21,7 +21,10 @@ export const BASE_CONFIG: GameConfig = {
     { p: new Vector(-3, 9), variant: 1 },
   ],
 
-  playerTanks: [{ p: new Vector(-3, 8) }, { p: new Vector(-3, 9) }],
+  playerTanks: [
+    { id: 1, p: new Vector(-3, 8) },
+    { id: 2, p: new Vector(-3, 9) },
+  ],
 
   sites: [
     { p: new Vector(2, 2), variant: 2 },

@@ -29,6 +29,7 @@ type PathsSprites = {
   arrowL: Sprite;
   arrowR: Sprite;
 };
+export type ValidPathsKeys = keyof PathsSprites
 
 export type SpritePreset = {
   hexSize: Vector;

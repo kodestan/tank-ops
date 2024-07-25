@@ -1,5 +1,11 @@
-import { Vector } from "./vector.js";
-import { SPRITES_64, SPRITES_96, SpritePreset, Sprite } from "./sprites.js";
+import { unitVectorToIdx, Vector } from "./vector.js";
+import {
+  SPRITES_64,
+  SPRITES_96,
+  SpritePreset,
+  Sprite,
+  ValidPathsKeys,
+} from "./sprites.js";
 import { GameState } from "./game-objects.js";
 
 type SpriteConfig = { scale: number; sprites: SpritePreset };
@@ -66,6 +72,10 @@ class DisplaySettings {
 
   public addCameraOffset(v: Vector) {
     this.cameraOffset = this.cameraOffset.add(v);
+  }
+
+  public getPathSprite(variant: string) {
+    return this.curPreset.sprites.overlays.paths[0][variant as ValidPathsKeys];
   }
 
   public getHexSprite(variant: number): Sprite {
@@ -140,6 +150,7 @@ export class DisplayDriver {
     this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
 
     this.drawHexes();
+    this.drawPaths();
     this.drawSites();
     this.drawTanks();
 
@@ -195,6 +206,62 @@ export class DisplayDriver {
       size.x,
       size.y,
     );
+  }
+
+  private drawPaths() {
+    for (const tank of this.gameState.playerTanks) {
+      if (tank.path.length < 2) continue;
+
+      const vStart = tank.path[1].sub(tank.path[0]);
+      const vEnd = tank.path[tank.path.length - 2].sub(
+        tank.path[tank.path.length - 1],
+      );
+      const variantStart = unitVectorToIdx(vStart);
+      const variantEnd = unitVectorToIdx(vEnd);
+
+      const spriteStart = this.displaySettings.getPathSprite(
+        variantStart.toString(),
+      );
+      const spriteEnd = this.displaySettings.getPathSprite(
+        variantEnd.toString(),
+      );
+
+      const triangleVariant = [0, 2, 4].includes(variantEnd)
+        ? "arrowL"
+        : "arrowR";
+      const spriteTriangle =
+        this.displaySettings.getPathSprite(triangleVariant);
+
+      this.drawSprite(spriteStart, tank.p);
+      this.drawSprite(spriteEnd, tank.path[tank.path.length - 1]);
+      this.drawSprite(spriteTriangle, tank.path[tank.path.length - 1]);
+
+      for (let i = 0; i < tank.path.length - 2; i++) {
+        const p1 = tank.path[i];
+        const p2 = tank.path[i + 1];
+        const p3 = tank.path[i + 2];
+        const variants = this.getPathSegmentVariants(
+          p1,
+          p2,
+          p3,
+        ) as ValidPathsKeys[];
+        for (const variant of variants) {
+          const sprite = this.displaySettings.getPathSprite(variant);
+          this.drawSprite(sprite, p2);
+        }
+      }
+    }
+  }
+
+  private getPathSegmentVariants(p1: Vector, p2: Vector, p3: Vector): string[] {
+    const v1 = p1.sub(p2);
+    const v2 = p3.sub(p2);
+    const idx1 = unitVectorToIdx(v1);
+    const idx2 = unitVectorToIdx(v2);
+    if (Math.abs(idx1 - idx2) === 3) {
+      return [idx1.toString(), idx2.toString()];
+    }
+    return [Math.min(idx1, idx2).toString() + Math.max(idx1, idx2).toString()];
   }
 
   private drawHexes() {
