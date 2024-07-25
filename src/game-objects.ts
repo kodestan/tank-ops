@@ -26,6 +26,7 @@ export class GameState {
   hexes: Map<string, Hex>;
   sites: Site[];
   playerTanks: Tank[];
+  cameraOffset: Vector = new Vector(0, 0);
 
   constructor(config: GameConfig) {
     this.hexes = new Map(

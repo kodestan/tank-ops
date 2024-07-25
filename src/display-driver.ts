@@ -98,7 +98,10 @@ export class DisplayDriver {
   }
 
   private drawSprite(sprite: Sprite, p: Vector) {
-    const screenCords = this.displaySettings.getScreenCords(p).round();
+    const screenCords = this.displaySettings
+      .getScreenCords(p)
+      .add(this.gameState.cameraOffset)
+      .round();
     const start = screenCords.add(sprite.offset);
     const size = sprite.size;
     this.ctx.drawImage(

@@ -20,7 +20,7 @@ export class Vector {
   }
 
   sub(other: Vector): Vector {
-    return new Vector(this.x - other.x, this.y + other.y);
+    return new Vector(this.x - other.x, this.y - other.y);
   }
 
   matmul(other: Vector): Vector {

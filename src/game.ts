@@ -1,6 +1,11 @@
 import { Hex, GameConfig, GameState } from "./game-objects.js";
 import { Vector } from "./vector.js";
 import { DisplayDriver } from "./display-driver.js";
+import { Grid } from "./grid.js";
+
+function elementToScreenCoords(elementP: Vector): Vector {
+  return elementP.mul(window.devicePixelRatio).round();
+}
 
 export const BASE_CONFIG: GameConfig = {
   hexes: [
@@ -26,12 +31,17 @@ export const BASE_CONFIG: GameConfig = {
 };
 
 export class Game {
+  grid: Grid;
   displayDriver: DisplayDriver;
+  isPointerDown = false;
 
   constructor(ctx: CanvasRenderingContext2D, config: GameConfig) {
     const gameState = new GameState(config);
+    const canvas = ctx.canvas;
+    this.initEventListeners(canvas);
 
     this.displayDriver = new DisplayDriver(ctx, gameState);
+    this.grid = new Grid(gameState);
 
     window.addEventListener("resize", () => {
       this.resize();
@@ -43,6 +53,36 @@ export class Game {
     requestAnimationFrame(() => {
       this.draw();
     });
+  }
+
+  private initEventListeners(canvas: HTMLCanvasElement) {
+    canvas.addEventListener("pointerdown", (e: PointerEvent) => {
+      const screenP = elementToScreenCoords(new Vector(e.offsetX, e.offsetY));
+      this.handlePointerStart(screenP);
+    });
+    canvas.addEventListener("pointerup", (e: PointerEvent) => {
+      const screenP = elementToScreenCoords(new Vector(e.offsetX, e.offsetY));
+      this.handlePointerEnd(screenP);
+    });
+    canvas.addEventListener("pointermove", (e: PointerEvent) => {
+      const screenP = elementToScreenCoords(new Vector(e.offsetX, e.offsetY));
+      this.handlePointerMove(screenP);
+    });
+  }
+
+  private handlePointerStart(p: Vector) {
+    this.isPointerDown = true;
+    this.grid.handlePointerStart(p);
+  }
+
+  private handlePointerEnd(p: Vector) {
+    this.isPointerDown = false;
+    this.grid.handlePointerEnd(p);
+  }
+
+  private handlePointerMove(p: Vector) {
+    if (!this.isPointerDown) return;
+    this.grid.handlePointerMove(p);
   }
 
   private draw() {
