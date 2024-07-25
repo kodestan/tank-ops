@@ -96,6 +96,7 @@ export class Game {
   }
 
   private handlePointerMove(p: Vector) {
+    this.grid.TEMPHandlePointerMove(p);
     if (!this.isPointerDown) return;
     this.grid.handlePointerMove(p);
   }

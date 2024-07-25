@@ -29,4 +29,8 @@ export class Grid {
     this.lastPoint = null;
     this.isPointerDown = false;
   }
+
+  TEMPHandlePointerMove(p: Vector) {
+    this.gameState.tempCurPointer = p;
+  }
 }

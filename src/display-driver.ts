@@ -95,14 +95,28 @@ class DisplaySettings {
   }
 
   public getHexSize(): Vector {
-    return this.curPreset.sprites.hexSize;
+    return this.curPreset.sprites.hexSize.mul(this.curPreset.scale);
   }
 
-  public getScreenCords(p: Vector): Vector {
-    const hexSize = this.curPreset.sprites.hexSize.mul(this.curPreset.scale);
+  public gridToScreenCoords(p: Vector): Vector {
+    const hexSize = this.getHexSize();
     const y = (p.y * hexSize.y * 3) / 4;
     const x = p.x * hexSize.x + 0.5 * p.y * hexSize.x;
     return new Vector(x, y).add(this.cameraOffset);
+  }
+
+  public screenToGridCoords(p: Vector): Vector {
+    const worldCoords = p.sub(this.cameraOffset);
+    const hexSize = this.getHexSize();
+    let y = ((worldCoords.y / hexSize.y) * 4) / 3;
+    let x = worldCoords.x / hexSize.x - y / 2;
+    const roundX = Math.round(x);
+    const roundY = Math.round(y);
+    x -= roundX;
+    y -= roundY;
+    const dx = Math.round(x + 0.5 * y) * Number(x * x >= y * y);
+    const dy = Math.round(y + 0.5 * x) * Number(x * x < y * y);
+    return new Vector(roundX + dx, roundY + dy);
   }
 }
 
@@ -128,6 +142,24 @@ export class DisplayDriver {
     this.drawHexes();
     this.drawSites();
     this.drawTanks();
+
+    const tempPointer = this.gameState.tempCurPointer;
+    this.ctx.save();
+    this.ctx.textAlign = "center";
+    this.ctx.font = "bold 48px monospace";
+
+    const gridCoords = this.displaySettings.screenToGridCoords(tempPointer);
+    const screenCoords = this.displaySettings.gridToScreenCoords(gridCoords);
+
+    this.ctx.fillStyle = "red";
+    this.ctx.fillRect(screenCoords.x - 10, screenCoords.y - 10, 20, 20);
+
+    this.ctx.fillText(
+      `x: ${gridCoords.x.toString().slice(0, 5)}, y: ${gridCoords.y.toString().slice(0, 5)}`,
+      screenCoords.x,
+      screenCoords.y - 30,
+    );
+    this.ctx.restore();
   }
 
   public resize() {
@@ -147,7 +179,7 @@ export class DisplayDriver {
   }
 
   private drawSprite(sprite: Sprite, p: Vector) {
-    const screenCords = this.displaySettings.getScreenCords(p).round();
+    const screenCords = this.displaySettings.gridToScreenCoords(p).round();
     const scale = this.displaySettings.curPreset.scale;
     const start = screenCords.add(sprite.offset.mul(scale));
     const size = sprite.size.mul(scale);
