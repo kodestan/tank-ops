@@ -50,6 +50,24 @@ export class Vector {
     }
     return a;
   }
+
+  gridDistance(other: Vector): number {
+    const v = this.sub(other);
+    const x = Math.abs(v.x);
+    const y = Math.abs(v.y);
+    // const y = Math.abs(v.y);
+    const xy = Math.abs(v.x + v.y);
+    // const yx = Math.abs(v.y - v.x);
+    return Math.max(x, y, xy);
+  }
+
+  neighbors(): Vector[] {
+    const neighbors = [];
+    for (const nv of idxToUnitVector.values()) {
+      neighbors.push(this.add(nv));
+    }
+    return neighbors;
+  }
 }
 
 export function isNeighbor(p1: Vector, p2: Vector): boolean {

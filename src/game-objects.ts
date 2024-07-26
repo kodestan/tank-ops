@@ -31,6 +31,9 @@ export class GameState {
   hexes: Map<string, Hex>;
   sites: Site[];
   playerTanks: Tank[];
+  visibleHexes: Set<string> = new Set();
+  availableHexes: Set<string> = new Set();
+  conditionallyAvailableHexes: Set<string> = new Set();
 
   constructor(config: GameConfig) {
     this.hexes = new Map(

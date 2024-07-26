@@ -11,6 +11,8 @@ import { GameState } from "./game-objects.js";
 type SpriteConfig = { scale: number; sprites: SpritePreset };
 
 const SPRITES_IMAGE_SRC = "./assets/sprites.png";
+const GREEN_HIGHLIGHT_IDX = 0;
+const YELLOW_HIGHLIGHT_IDX = 1;
 
 export class DisplayDriver {
   backgroundColor: string = "rgb(50, 50, 50)";
@@ -199,14 +201,28 @@ export class DisplayDriver {
 
   private drawHexes() {
     for (const hex of this.gameState.hexes.values()) {
-      const sprite = this.getHexSprite(hex.variant);
+      const sprite = this.getHexSprite(
+        hex.variant,
+        this.gameState.visibleHexes.has(hex.p.toString()),
+      );
       this.drawSprite(sprite, hex.p);
+      if (this.gameState.conditionallyAvailableHexes.has(hex.p.toString())) {
+        const sprite = this.getHighlightSprite(YELLOW_HIGHLIGHT_IDX);
+        this.drawSprite(sprite, hex.p);
+      }
+      if (this.gameState.availableHexes.has(hex.p.toString())) {
+        const sprite = this.getHighlightSprite(GREEN_HIGHLIGHT_IDX);
+        this.drawSprite(sprite, hex.p);
+      }
     }
   }
 
   private drawSites() {
     for (const site of this.gameState.sites) {
-      const sprite = this.getSiteSprite(site.variant);
+      const sprite = this.getSiteSprite(
+        site.variant,
+        this.gameState.visibleHexes.has(site.p.toString()),
+      );
       this.drawSprite(sprite, site.p);
     }
   }
@@ -227,12 +243,18 @@ export class DisplayDriver {
     return this.curPreset.sprites.overlays.aim[variant];
   }
 
-  private getHexSprite(variant: number): Sprite {
-    return this.curPreset.sprites.hexes.light[variant];
+  private getHexSprite(variant: number, light: boolean): Sprite {
+    if (light) {
+      return this.curPreset.sprites.hexes.light[variant];
+    }
+    return this.curPreset.sprites.hexes.dark[variant];
   }
 
-  private getSiteSprite(variant: number): Sprite {
-    return this.curPreset.sprites.sites.light[variant];
+  private getSiteSprite(variant: number, light: boolean): Sprite {
+    if (light) {
+      return this.curPreset.sprites.sites.light[variant];
+    }
+    return this.curPreset.sprites.sites.dark[variant];
   }
 
   private getTankSprites(
@@ -251,6 +273,10 @@ export class DisplayDriver {
     const body = this.curPreset.sprites.tanksBodies[bodyIdx];
     const turret = this.curPreset.sprites.tanksTurrets[turretIdx];
     return { body: body, turret: turret };
+  }
+
+  private getHighlightSprite(variant: number): Sprite {
+    return this.curPreset.sprites.overlays.highlights[variant];
   }
 
   private getPathSprite(variant: string) {

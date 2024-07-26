@@ -16,7 +16,8 @@ export class Grid {
   displayDriver: DisplayDriver;
   // TODO move the config somewhere
   config = {
-    maxRange: 10,
+    maxRange: 3,
+    visibilityRange: 2,
   };
   lastPoint: Vector = Vector.zero();
   curT = 0;
@@ -29,6 +30,7 @@ export class Grid {
   constructor(gameState: GameState, displayDriver: DisplayDriver) {
     this.gameState = gameState;
     this.displayDriver = displayDriver;
+    this.recalculateVisibleHexes();
   }
 
   public handlePointerStart(p: Vector) {
@@ -43,6 +45,7 @@ export class Grid {
       tank.shooting = false;
       tank.shootingDir = 0;
       this.curTank = tank;
+      this.recalculateTraversable();
       return;
     }
 
@@ -65,6 +68,8 @@ export class Grid {
           this.curMode = PointerMode.TankFire;
           this.curTank.shooting = true;
           this.curTank.shootingDir = 0;
+          this.gameState.availableHexes.clear();
+          this.gameState.conditionallyAvailableHexes.clear();
           this.handleTankFire(p);
         } else {
           this.handleTankNavigation(p);
@@ -80,6 +85,7 @@ export class Grid {
     this.isPointerDown = false;
     this.curMode = PointerMode.None;
     this.curTank = null;
+    this.recalculateTraversable();
   }
 
   public tick() {
@@ -117,6 +123,82 @@ export class Grid {
       this.curTank.path.push(this.curTank.p);
     }
     this.curTank.path.push(gridP);
+
+    this.recalculateTraversable();
+  }
+
+  private recalculateTraversable() {
+    this.recalculateAvailableHexes(this.gameState.availableHexes, false);
+    this.recalculateAvailableHexes(
+      this.gameState.conditionallyAvailableHexes,
+      true,
+    );
+  }
+
+  private recalculateAvailableHexes(set: Set<string>, conditional: boolean) {
+    set.clear();
+    if (this.curTank === null) {
+      return;
+    }
+    let start = this.curTank.p;
+    let range = this.config.maxRange;
+    if (this.curTank.path.length > 0) {
+      start = this.curTank.path[this.curTank.path.length - 1];
+      range -= this.curTank.path.length - 1;
+    }
+    if (range <= 0) {
+      return;
+    }
+
+    const unavailable: Set<string> = new Set();
+    for (let i = 0; i < this.curTank.path.length - 1; i++) {
+      unavailable.add(this.curTank.path[i].toString());
+    }
+    if (!conditional) {
+      for (const tank of this.gameState.playerTanks) {
+        if (tank.id === this.curTank.id) continue;
+        unavailable.add(tank.p.toString());
+      }
+    }
+
+    let frontier = [start];
+    set.add(start.toString());
+
+    for (let i = 0; i < range; i++) {
+      let newFrontier = [];
+      for (const p of frontier) {
+        for (const n of p.neighbors()) {
+          if (set.has(n.toString())) {
+            continue;
+          }
+          const hex = this.gameState.hexes.get(n.toString());
+          if (hex === undefined || !hex.traversable) {
+            continue;
+          }
+          if (unavailable.has(n.toString())) {
+            continue;
+          }
+          // checks
+          set.add(n.toString());
+          newFrontier.push(n);
+        }
+      }
+      frontier = newFrontier;
+    }
+
+    set.delete(start.toString());
+  }
+
+  private recalculateVisibleHexes() {
+    this.gameState.visibleHexes.clear();
+
+    for (const tank of this.gameState.playerTanks) {
+      for (const hex of this.gameState.hexes.values()) {
+        if (tank.p.gridDistance(hex.p) <= this.config.visibilityRange) {
+          this.gameState.visibleHexes.add(hex.p.toString());
+        }
+      }
+    }
   }
 
   private getCollidingTank(p: Vector): Tank | null {
