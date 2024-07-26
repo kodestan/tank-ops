@@ -7,6 +7,10 @@ export class Vector {
     this.y = y;
   }
 
+  static zero(): Vector {
+    return new Vector(0, 0);
+  }
+
   toString(): string {
     return `${this.x}_${this.y}`;
   }
@@ -37,6 +41,14 @@ export class Vector {
 
   eq(other: Vector): boolean {
     return this.x === other.x && this.y === other.y;
+  }
+
+  angle(): number {
+    const a = (Math.atan2(this.y, this.x) * 180) / Math.PI;
+    if (a < 0) {
+      return a + 360;
+    }
+    return a;
   }
 }
 

@@ -16,6 +16,18 @@ export const BASE_CONFIG: GameConfig = {
     { p: new Vector(3, 1), variant: 2 },
     { p: new Vector(4, 1), variant: 0 },
     { p: new Vector(2, 2), variant: 1 },
+    { p: new Vector(2, 3), variant: 1 },
+    { p: new Vector(1, 4), variant: 1 },
+    { p: new Vector(0, 4), variant: 1 },
+    { p: new Vector(-2, 5), variant: 1 },
+    { p: new Vector(-1, 5), variant: 1 },
+    { p: new Vector(0, 5), variant: 1 },
+    { p: new Vector(-3, 6), variant: 1 },
+    { p: new Vector(-2, 6), variant: 1 },
+    { p: new Vector(-1, 6), variant: 1 },
+    { p: new Vector(-3, 7), variant: 1 },
+    { p: new Vector(-2, 7), variant: 1 },
+    { p: new Vector(-1, 7), variant: 1 },
     { p: new Vector(-3, 8), variant: 1 },
     { p: new Vector(-2, 8), variant: 1 },
     { p: new Vector(-3, 9), variant: 1 },
@@ -53,9 +65,7 @@ export class Game {
   }
 
   public run() {
-    requestAnimationFrame(() => {
-      this.draw();
-    });
+    this.draw(0);
   }
 
   private initEventListeners(canvas: HTMLCanvasElement) {
@@ -99,15 +109,16 @@ export class Game {
   }
 
   private handlePointerMove(p: Vector) {
-    this.grid.TEMPHandlePointerMove(p);
     if (!this.isPointerDown) return;
     this.grid.handlePointerMove(p);
   }
 
-  private draw() {
+  private draw(curT: number) {
     this.displayDriver.draw();
-    requestAnimationFrame(() => {
-      this.draw();
+    this.grid.curT = curT;
+    this.grid.tick();
+    requestAnimationFrame((t: number) => {
+      this.draw(t);
     });
   }
 

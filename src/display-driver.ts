@@ -12,8 +12,12 @@ type SpriteConfig = { scale: number; sprites: SpritePreset };
 
 const SPRITES_IMAGE_SRC = "./assets/sprites.png";
 
-class DisplaySettings {
+export class DisplayDriver {
+  backgroundColor: string = "rgb(50, 50, 50)";
   ctx: CanvasRenderingContext2D;
+  gameState: GameState;
+  sprites: HTMLImageElement;
+
   cameraOffset: Vector = new Vector(0, 0);
   spriteConfigs: SpriteConfig[] = [
     { scale: 1, sprites: SPRITES_64 }, // 64
@@ -27,8 +31,21 @@ class DisplaySettings {
   presetIdx: number = 1;
   curPreset = this.spriteConfigs[this.presetIdx];
 
-  constructor(ctx: CanvasRenderingContext2D) {
+  constructor(ctx: CanvasRenderingContext2D, gameState: GameState) {
     this.ctx = ctx;
+    this.gameState = gameState;
+    this.sprites = new Image();
+    this.sprites.src = SPRITES_IMAGE_SRC;
+  }
+
+  public draw() {
+    this.ctx.fillStyle = this.backgroundColor;
+    this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+
+    this.drawHexes();
+    this.drawPaths();
+    this.drawSites();
+    this.drawTanks();
   }
 
   public resize() {
@@ -45,7 +62,15 @@ class DisplaySettings {
     this.ctx.canvas.height = canvasSize.y;
   }
 
-  public zoom(zoomIn: boolean) {
+  public handleZoomIn() {
+    this.zoom(true);
+  }
+
+  public handleZoomOut() {
+    this.zoom(false);
+  }
+
+  private zoom(zoomIn: boolean) {
     if (zoomIn && this.presetIdx === this.spriteConfigs.length - 1) return;
     if (!zoomIn && this.presetIdx === 0) return;
     if (zoomIn) {
@@ -74,47 +99,6 @@ class DisplaySettings {
     this.cameraOffset = this.cameraOffset.add(v);
   }
 
-  public getPathSprite(variant: string) {
-    return this.curPreset.sprites.overlays.paths[0][variant as ValidPathsKeys];
-  }
-
-  public getHexSprite(variant: number): Sprite {
-    return this.curPreset.sprites.hexes.light[variant];
-  }
-
-  public getSiteSprite(variant: number): Sprite {
-    return this.curPreset.sprites.sites.light[variant];
-  }
-
-  public getTankSprites(
-    angleBody: number,
-    angleTurret: number,
-  ): { body: Sprite; turret: Sprite } {
-    const len = this.curPreset.sprites.tanksBodies.length;
-    const bodyIdx = Math.min(
-      len - 1,
-      Math.max(0, Math.round((angleBody / 360) * len)),
-    );
-    const turretIdx = Math.min(
-      len - 1,
-      Math.max(0, Math.round((angleTurret / 360) * len)),
-    );
-    const body = this.curPreset.sprites.tanksBodies[bodyIdx];
-    const turret = this.curPreset.sprites.tanksTurrets[turretIdx];
-    return { body: body, turret: turret };
-  }
-
-  public getHexSize(): Vector {
-    return this.curPreset.sprites.hexSize.mul(this.curPreset.scale);
-  }
-
-  public gridToScreenCoords(p: Vector): Vector {
-    const hexSize = this.getHexSize();
-    const y = (p.y * hexSize.y * 3) / 4;
-    const x = p.x * hexSize.x + 0.5 * p.y * hexSize.x;
-    return new Vector(x, y).add(this.cameraOffset);
-  }
-
   public screenToGridCoords(p: Vector): Vector {
     const worldCoords = p.sub(this.cameraOffset);
     const hexSize = this.getHexSize();
@@ -128,70 +112,17 @@ class DisplaySettings {
     const dy = Math.round(y + 0.5 * x) * Number(x * x < y * y);
     return new Vector(roundX + dx, roundY + dy);
   }
-}
 
-export class DisplayDriver {
-  backgroundColor: string = "rgb(50, 50, 50)";
-  ctx: CanvasRenderingContext2D;
-  gameState: GameState;
-  displaySettings: DisplaySettings;
-  sprites: HTMLImageElement;
-
-  constructor(ctx: CanvasRenderingContext2D, gameState: GameState) {
-    this.ctx = ctx;
-    this.gameState = gameState;
-    this.displaySettings = new DisplaySettings(this.ctx);
-    this.sprites = new Image();
-    this.sprites.src = SPRITES_IMAGE_SRC;
-  }
-
-  public draw() {
-    this.ctx.fillStyle = this.backgroundColor;
-    this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-
-    this.drawHexes();
-    this.drawPaths();
-    this.drawSites();
-    this.drawTanks();
-
-    const tempPointer = this.gameState.tempCurPointer;
-    this.ctx.save();
-    this.ctx.textAlign = "center";
-    this.ctx.font = "bold 48px monospace";
-
-    const gridCoords = this.displaySettings.screenToGridCoords(tempPointer);
-    const screenCoords = this.displaySettings.gridToScreenCoords(gridCoords);
-
-    this.ctx.fillStyle = "red";
-    this.ctx.fillRect(screenCoords.x - 10, screenCoords.y - 10, 20, 20);
-
-    this.ctx.fillText(
-      `x: ${gridCoords.x.toString().slice(0, 5)}, y: ${gridCoords.y.toString().slice(0, 5)}`,
-      screenCoords.x,
-      screenCoords.y - 30,
-    );
-    this.ctx.restore();
-  }
-
-  public resize() {
-    this.displaySettings.resize();
-  }
-
-  public handleZoomIn() {
-    this.displaySettings.zoom(true);
-  }
-
-  public handleZoomOut() {
-    this.displaySettings.zoom(false);
-  }
-
-  public addCameraOffset(v: Vector) {
-    this.displaySettings.addCameraOffset(v);
+  public gridToScreenCoords(p: Vector): Vector {
+    const hexSize = this.getHexSize();
+    const y = (p.y * hexSize.y * 3) / 4;
+    const x = p.x * hexSize.x + 0.5 * p.y * hexSize.x;
+    return new Vector(x, y).add(this.cameraOffset);
   }
 
   private drawSprite(sprite: Sprite, p: Vector) {
-    const screenCords = this.displaySettings.gridToScreenCoords(p).round();
-    const scale = this.displaySettings.curPreset.scale;
+    const screenCords = this.gridToScreenCoords(p).round();
+    const scale = this.curPreset.scale;
     const start = screenCords.add(sprite.offset.mul(scale));
     const size = sprite.size.mul(scale);
     this.ctx.imageSmoothingEnabled = false;
@@ -219,18 +150,13 @@ export class DisplayDriver {
       const variantStart = unitVectorToIdx(vStart);
       const variantEnd = unitVectorToIdx(vEnd);
 
-      const spriteStart = this.displaySettings.getPathSprite(
-        variantStart.toString(),
-      );
-      const spriteEnd = this.displaySettings.getPathSprite(
-        variantEnd.toString(),
-      );
+      const spriteStart = this.getPathSprite(variantStart.toString());
+      const spriteEnd = this.getPathSprite(variantEnd.toString());
 
       const triangleVariant = [0, 2, 4].includes(variantEnd)
         ? "arrowL"
         : "arrowR";
-      const spriteTriangle =
-        this.displaySettings.getPathSprite(triangleVariant);
+      const spriteTriangle = this.getPathSprite(triangleVariant);
 
       this.drawSprite(spriteStart, tank.p);
       this.drawSprite(spriteEnd, tank.path[tank.path.length - 1]);
@@ -246,9 +172,16 @@ export class DisplayDriver {
           p3,
         ) as ValidPathsKeys[];
         for (const variant of variants) {
-          const sprite = this.displaySettings.getPathSprite(variant);
+          const sprite = this.getPathSprite(variant);
           this.drawSprite(sprite, p2);
         }
+      }
+    }
+
+    for (const tank of this.gameState.playerTanks) {
+      if (tank.shooting) {
+        const sprite = this.getAimSprite(tank.shootingDir);
+        this.drawSprite(sprite, tank.p);
       }
     }
   }
@@ -266,26 +199,61 @@ export class DisplayDriver {
 
   private drawHexes() {
     for (const hex of this.gameState.hexes.values()) {
-      const sprite = this.displaySettings.getHexSprite(hex.variant);
+      const sprite = this.getHexSprite(hex.variant);
       this.drawSprite(sprite, hex.p);
     }
   }
 
   private drawSites() {
     for (const site of this.gameState.sites) {
-      const sprite = this.displaySettings.getSiteSprite(site.variant);
+      const sprite = this.getSiteSprite(site.variant);
       this.drawSprite(sprite, site.p);
     }
   }
 
   private drawTanks() {
     for (const tank of this.gameState.playerTanks) {
-      const sprite = this.displaySettings.getTankSprites(
-        tank.angleBody,
-        tank.angleTurret,
-      );
+      const sprite = this.getTankSprites(tank.angleBody, tank.angleTurret);
       this.drawSprite(sprite.body, tank.p);
       this.drawSprite(sprite.turret, tank.p);
     }
+  }
+
+  private getHexSize(): Vector {
+    return this.curPreset.sprites.hexSize.mul(this.curPreset.scale);
+  }
+
+  private getAimSprite(variant: number): Sprite {
+    return this.curPreset.sprites.overlays.aim[variant];
+  }
+
+  private getHexSprite(variant: number): Sprite {
+    return this.curPreset.sprites.hexes.light[variant];
+  }
+
+  private getSiteSprite(variant: number): Sprite {
+    return this.curPreset.sprites.sites.light[variant];
+  }
+
+  private getTankSprites(
+    angleBody: number,
+    angleTurret: number,
+  ): { body: Sprite; turret: Sprite } {
+    const len = this.curPreset.sprites.tanksBodies.length;
+    const bodyIdx = Math.min(
+      len - 1,
+      Math.max(0, Math.round((angleBody / 360) * len)),
+    );
+    const turretIdx = Math.min(
+      len - 1,
+      Math.max(0, Math.round((angleTurret / 360) * len)),
+    );
+    const body = this.curPreset.sprites.tanksBodies[bodyIdx];
+    const turret = this.curPreset.sprites.tanksTurrets[turretIdx];
+    return { body: body, turret: turret };
+  }
+
+  private getPathSprite(variant: string) {
+    return this.curPreset.sprites.overlays.paths[0][variant as ValidPathsKeys];
   }
 }
