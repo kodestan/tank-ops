@@ -2,6 +2,9 @@ import { Hex, GameConfig, GameState } from "./game-objects.js";
 import { Vector } from "./vector.js";
 import { DisplayDriver } from "./display-driver.js";
 import { Grid } from "./grid.js";
+import { UI, UIMode } from "./ui.js";
+import { Notifier } from "./notifier.js";
+import { GameEvent, GameEventType } from "./game-event.js";
 
 function elementToScreenCoords(elementP: Vector): Vector {
   return elementP.mul(window.devicePixelRatio).round();
@@ -65,23 +68,52 @@ export const BASE_CONFIG: GameConfig = {
   ],
 };
 
+enum Layer {
+  UI,
+  Grid,
+}
+
 export class Game {
-  grid: Grid;
+  notifier: Notifier;
   displayDriver: DisplayDriver;
+  grid: Grid | null = null;
+  ui: UI;
   isPointerDown = false;
+  layer: Layer = Layer.UI;
+  config: GameConfig;
 
   constructor(ctx: CanvasRenderingContext2D, config: GameConfig) {
-    const gameState = new GameState(config);
+    this.notifier = new Notifier(this);
+    this.config = config;
     const canvas = ctx.canvas;
     this.initEventListeners(canvas);
 
-    this.displayDriver = new DisplayDriver(ctx, gameState);
-    this.grid = new Grid(gameState, this.displayDriver);
+    this.ui = new UI(this.notifier);
+    this.displayDriver = new DisplayDriver(ctx, null, this.ui);
+    // this.grid = new Grid(gameState, this.displayDriver);
 
     window.addEventListener("resize", () => {
       this.resize();
     });
     this.resize();
+  }
+
+  public update(event: GameEvent) {
+    switch (event.type) {
+      case GameEventType.StartGame:
+        this.initGrid();
+        this.ui.enableMode(UIMode.InGame);
+        break;
+      case GameEventType.ZoomIn:
+        this.handleZoomIn();
+        break;
+      case GameEventType.ZoomOut:
+        this.handleZoomOut();
+        break;
+      case GameEventType.SendTurn:
+        console.log("sending turn");
+        break;
+    }
   }
 
   public run() {
@@ -110,6 +142,12 @@ export class Game {
     });
   }
 
+  private initGrid() {
+    const gameState = new GameState(this.config);
+    this.grid = new Grid(gameState, this.displayDriver);
+    this.displayDriver.gameState = gameState;
+  }
+
   private handleZoomIn() {
     this.displayDriver.handleZoomIn();
   }
@@ -120,23 +158,37 @@ export class Game {
 
   private handlePointerStart(p: Vector) {
     this.isPointerDown = true;
-    this.grid.handlePointerStart(p);
+    this.layer = this.ui.collides(p) ? Layer.UI : Layer.Grid;
+    if (this.layer === Layer.UI) {
+      this.ui.handlePointerStart(p);
+    } else {
+      this.grid?.handlePointerStart(p);
+    }
   }
 
   private handlePointerEnd(p: Vector) {
     this.isPointerDown = false;
-    this.grid.handlePointerEnd(p);
+    if (this.layer === Layer.UI) {
+      this.ui.handlePointerEnd(p);
+    } else {
+      this.grid?.handlePointerEnd(p);
+    }
+    this.layer = Layer.UI;
   }
 
   private handlePointerMove(p: Vector) {
     if (!this.isPointerDown) return;
-    this.grid.handlePointerMove(p);
+    if (this.layer === Layer.UI) {
+      this.ui.handlePointerMove(p);
+    } else {
+      this.grid?.handlePointerMove(p);
+    }
   }
 
   private draw(curT: number) {
     this.displayDriver.draw();
-    this.grid.curT = curT;
-    this.grid.tick();
+    this.grid?.setT(curT);
+    this.grid?.tick();
     requestAnimationFrame((t: number) => {
       this.draw(t);
     });

@@ -22,3 +22,8 @@ body {
 	overflow: hidden;
 	align-self: center;
 }
+
+canvas {
+	user-select: none;
+	touch-action: none;
+}

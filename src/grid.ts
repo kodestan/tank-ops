@@ -94,6 +94,10 @@ export class Grid {
     }
   }
 
+  public setT(t: number) {
+    this.curT = t;
+  }
+
   private handleDrag(p: Vector) {
     if (this.lastPoint === null) return;
     this.displayDriver.addCameraOffset(p.sub(this.lastPoint));

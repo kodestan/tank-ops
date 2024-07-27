@@ -7,6 +7,7 @@ import {
   ValidPathsKeys,
 } from "./sprites.js";
 import { GameState } from "./game-objects.js";
+import { ButtonState, UI } from "./ui.js";
 
 type SpriteConfig = { scale: number; sprites: SpritePreset };
 
@@ -17,7 +18,8 @@ const YELLOW_HIGHLIGHT_IDX = 1;
 export class DisplayDriver {
   backgroundColor: string = "rgb(50, 50, 50)";
   ctx: CanvasRenderingContext2D;
-  gameState: GameState;
+  gameState: GameState | null;
+  ui: UI;
   sprites: HTMLImageElement;
 
   cameraOffset: Vector = new Vector(0, 0);
@@ -33,9 +35,14 @@ export class DisplayDriver {
   presetIdx: number = 1;
   curPreset = this.spriteConfigs[this.presetIdx];
 
-  constructor(ctx: CanvasRenderingContext2D, gameState: GameState) {
+  constructor(
+    ctx: CanvasRenderingContext2D,
+    gameState: GameState | null,
+    ui: UI,
+  ) {
     this.ctx = ctx;
     this.gameState = gameState;
+    this.ui = ui;
     this.sprites = new Image();
     this.sprites.src = SPRITES_IMAGE_SRC;
   }
@@ -48,6 +55,46 @@ export class DisplayDriver {
     this.drawPaths();
     this.drawSites();
     this.drawTanks();
+
+    this.ctx.save();
+    // for (const panel of this.ui.panels) {
+    //   this.ctx.globalAlpha = 0.4;
+    //   this.ctx.fillStyle = "red";
+    //   this.ctx.fillRect(
+    //     panel.area.start.x,
+    //     panel.area.start.y,
+    //     panel.area.size.x,
+    //     panel.area.size.y,
+    //   );
+    // }
+
+    for (const button of this.ui.curButtons) {
+      this.ctx.globalAlpha = 0.6;
+      this.ctx.fillStyle = "white";
+      if (button.state === ButtonState.Pressed) {
+        this.ctx.fillStyle = "red";
+      }
+
+      this.ctx.fillRect(
+        button.area.start.x,
+        button.area.start.y,
+        button.area.size.x,
+        button.area.size.y,
+      );
+
+      let fontSize = button.baseFontSize;
+      if (button.fontSizeMultiplier) fontSize *= button.fontSizeMultiplier;
+      fontSize = Math.round(fontSize);
+      this.ctx.font = `bold ${fontSize}px monospace`;
+      this.ctx.textAlign = "center";
+      this.ctx.textBaseline = "middle";
+      this.ctx.globalAlpha = 1;
+      this.ctx.fillStyle = "black";
+      const center = button.area.start.add(button.area.size.mul(0.5)).round();
+      this.ctx.fillText(button.text, center.x, center.y);
+    }
+
+    this.ctx.restore();
   }
 
   public resize() {
@@ -62,6 +109,8 @@ export class DisplayDriver {
 
     this.ctx.canvas.width = canvasSize.x;
     this.ctx.canvas.height = canvasSize.y;
+
+    this.ui.resize(canvasSize);
   }
 
   public handleZoomIn() {
@@ -142,6 +191,7 @@ export class DisplayDriver {
   }
 
   private drawPaths() {
+    if (this.gameState === null) return;
     for (const tank of this.gameState.playerTanks) {
       if (tank.path.length < 2) continue;
 
@@ -200,6 +250,7 @@ export class DisplayDriver {
   }
 
   private drawHexes() {
+    if (this.gameState === null) return;
     for (const hex of this.gameState.hexes.values()) {
       const sprite = this.getHexSprite(
         hex.variant,
@@ -218,6 +269,7 @@ export class DisplayDriver {
   }
 
   private drawSites() {
+    if (this.gameState === null) return;
     for (const site of this.gameState.sites) {
       const sprite = this.getSiteSprite(
         site.variant,
@@ -228,6 +280,7 @@ export class DisplayDriver {
   }
 
   private drawTanks() {
+    if (this.gameState === null) return;
     for (const tank of this.gameState.playerTanks) {
       const sprite = this.getTankSprites(tank.angleBody, tank.angleTurret);
       this.drawSprite(sprite.body, tank.p);
