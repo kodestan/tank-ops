@@ -1,4 +1,4 @@
-import { GameEvent, GameEventType } from "./game-event.js";
+import { GameEvent, GameEventType, TypeOnlyEvent } from "./game-event.js";
 import { Notifier } from "./notifier.js";
 import { Vector } from "./vector.js";
 
@@ -20,7 +20,7 @@ class Button {
 
   constructor(
     text: string,
-    eventType: GameEventType,
+    eventType: TypeOnlyEvent,
     fontSizeMultiplier?: number,
   ) {
     this.area = newArea(0, 0, 0, 0);
@@ -183,6 +183,10 @@ export class UI {
   buttons: Map<UIMode, Button[]> = new Map();
   curButtons: Button[] = [];
 
+  specialButtons: {
+    startGame: Button;
+  };
+
   constructor(notifier: Notifier) {
     this.notifier = notifier;
 
@@ -227,10 +231,16 @@ export class UI {
 
     this.panels = [inGameMenuPanel, mainMenuPanel];
 
-    const buttonSendTurn = new Button("send turn", GameEventType.SendTurn);
-    const buttonQuitGame = new Button("quit game", GameEventType.QuitGame);
-    const buttonZoomIn = new Button("+", GameEventType.ZoomIn, 1.5);
-    const buttonZoomOut = new Button("-", GameEventType.ZoomOut, 1.5);
+    const buttonSendTurn = new Button(
+      "send turn",
+      GameEventType.ButtonSendTurn,
+    );
+    const buttonQuitGame = new Button(
+      "quit game",
+      GameEventType.ButtonQuitGame,
+    );
+    const buttonZoomIn = new Button("+", GameEventType.ButtonZoomIn, 1.5);
+    const buttonZoomOut = new Button("-", GameEventType.ButtonZoomOut, 1.5);
     inGameMenuPanel.attachButton(
       buttonSendTurn,
       newArea(0, 0, 2, 1),
@@ -259,7 +269,10 @@ export class UI {
     ];
     this.buttons.set(UIMode.InGame, inGameButtons);
 
-    const buttonStartGame = new Button("start game", GameEventType.StartGame);
+    const buttonStartGame = new Button(
+      "start game",
+      GameEventType.ButtonStartGame,
+    );
     mainMenuPanel.attachButton(
       buttonStartGame,
       newArea(1, 0, 2, 1),
@@ -268,7 +281,12 @@ export class UI {
     this.buttons.set(UIMode.Main, [buttonStartGame]);
 
     this.curButtons = this.buttons.get(UIMode.Main) || [];
-    // this.curButtons.push(buttonEndTurn, buttonZoomIn, buttonZoomOut);
+
+    buttonStartGame.state = ButtonState.Inactive;
+
+    this.specialButtons = {
+      startGame: buttonStartGame,
+    };
   }
 
   public enableMode(mode: UIMode) {
@@ -291,7 +309,7 @@ export class UI {
 
   public handlePointerEnd(p: Vector) {
     for (const button of this.curButtons) {
-      if (button.collides(p)) {
+      if (button.collides(p) && button.state !== ButtonState.Inactive) {
         this.notifier.notify(button.event);
       }
     }
@@ -307,8 +325,15 @@ export class UI {
     return false;
   }
 
+  public setOnlineGameAvailability(available: boolean) {
+    this.specialButtons.startGame.state = available
+      ? ButtonState.Normal
+      : ButtonState.Inactive;
+  }
+
   private mark(p: Vector, state: ButtonState) {
     for (const button of this.curButtons) {
+      if (button.state === ButtonState.Inactive) continue;
       button.state = ButtonState.Normal;
       if (button.collides(p)) {
         button.state = state;

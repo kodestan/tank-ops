@@ -5,6 +5,9 @@ import { Grid } from "./grid.js";
 import { UI, UIMode } from "./ui.js";
 import { Notifier } from "./notifier.js";
 import { GameEvent, GameEventType } from "./game-event.js";
+import { WsDriver } from "./ws-driver.js";
+
+const WS_URL = "ws";
 
 function elementToScreenCoords(elementP: Vector): Vector {
   return elementP.mul(window.devicePixelRatio).round();
@@ -77,6 +80,7 @@ enum Layer {
 export class Game {
   notifier: Notifier;
   displayDriver: DisplayDriver;
+  wsDriver: WsDriver;
   grid: Grid | null = null;
   ui: UI;
   isPointerDown = false;
@@ -86,6 +90,7 @@ export class Game {
   constructor(ctx: CanvasRenderingContext2D, config: GameConfig) {
     this.notifier = new Notifier(this);
     this.config = config;
+    this.wsDriver = new WsDriver(WS_URL, this.notifier);
     const canvas = ctx.canvas;
     this.initEventListeners(canvas);
 
@@ -101,21 +106,30 @@ export class Game {
   public update(event: GameEvent) {
     switch (event.type) {
       case GameEventType.StartGame:
-        this.initGrid();
+        this.initGrid(event.config);
         this.ui.enableMode(UIMode.InGame);
         break;
-      case GameEventType.ZoomIn:
+      case GameEventType.ButtonStartGame:
+        this.wsDriver.sendStartGame();
+        break;
+      case GameEventType.ButtonZoomIn:
         this.handleZoomIn();
         break;
-      case GameEventType.ZoomOut:
+      case GameEventType.ButtonZoomOut:
         this.handleZoomOut();
         break;
-      case GameEventType.SendTurn:
+      case GameEventType.ButtonSendTurn:
         console.log("sending turn");
         break;
-      case GameEventType.QuitGame:
+      case GameEventType.ButtonQuitGame:
         this.removeGrid();
         this.ui.enableMode(UIMode.Main);
+        break;
+      case GameEventType.WsOpen:
+        this.ui.setOnlineGameAvailability(true);
+        break;
+      case GameEventType.WsClose:
+        this.ui.setOnlineGameAvailability(false);
         break;
     }
   }
@@ -146,8 +160,8 @@ export class Game {
     });
   }
 
-  private initGrid() {
-    const gameState = new GameState(this.config);
+  private initGrid(config: GameConfig) {
+    const gameState = new GameState(config);
     this.grid = new Grid(gameState, this.displayDriver);
     this.displayDriver.gameState = gameState;
     this.displayDriver.reset();

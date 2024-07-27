@@ -56,46 +56,7 @@ export class DisplayDriver {
     this.drawPaths();
     this.drawSites();
     this.drawTanks();
-
-    this.ctx.save();
-    // for (const panel of this.ui.panels) {
-    //   this.ctx.globalAlpha = 0.4;
-    //   this.ctx.fillStyle = "red";
-    //   this.ctx.fillRect(
-    //     panel.area.start.x,
-    //     panel.area.start.y,
-    //     panel.area.size.x,
-    //     panel.area.size.y,
-    //   );
-    // }
-
-    for (const button of this.ui.curButtons) {
-      this.ctx.globalAlpha = 0.6;
-      this.ctx.fillStyle = "white";
-      if (button.state === ButtonState.Pressed) {
-        this.ctx.fillStyle = "red";
-      }
-
-      this.ctx.fillRect(
-        button.area.start.x,
-        button.area.start.y,
-        button.area.size.x,
-        button.area.size.y,
-      );
-
-      let fontSize = button.baseFontSize;
-      if (button.fontSizeMultiplier) fontSize *= button.fontSizeMultiplier;
-      fontSize = Math.round(fontSize);
-      this.ctx.font = `bold ${fontSize}px monospace`;
-      this.ctx.textAlign = "center";
-      this.ctx.textBaseline = "middle";
-      this.ctx.globalAlpha = 1;
-      this.ctx.fillStyle = "black";
-      const center = button.area.start.add(button.area.size.mul(0.5)).round();
-      this.ctx.fillText(button.text, center.x, center.y);
-    }
-
-    this.ctx.restore();
+    this.drawUI();
   }
 
   public resize() {
@@ -195,6 +156,51 @@ export class DisplayDriver {
       size.x,
       size.y,
     );
+  }
+
+  private drawUI() {
+    this.ctx.save();
+    // for (const panel of this.ui.panels) {
+    //   this.ctx.globalAlpha = 0.4;
+    //   this.ctx.fillStyle = "red";
+    //   this.ctx.fillRect(
+    //     panel.area.start.x,
+    //     panel.area.start.y,
+    //     panel.area.size.x,
+    //     panel.area.size.y,
+    //   );
+    // }
+
+    for (const button of this.ui.curButtons) {
+      this.ctx.globalAlpha = 0.6;
+      this.ctx.fillStyle = "white";
+      if (button.state === ButtonState.Pressed) {
+        this.ctx.fillStyle = "red";
+      }
+      if (button.state === ButtonState.Inactive) {
+        this.ctx.fillStyle = "blue";
+      }
+
+      this.ctx.fillRect(
+        button.area.start.x,
+        button.area.start.y,
+        button.area.size.x,
+        button.area.size.y,
+      );
+
+      let fontSize = button.baseFontSize;
+      if (button.fontSizeMultiplier) fontSize *= button.fontSizeMultiplier;
+      fontSize = Math.round(fontSize);
+      this.ctx.font = `bold ${fontSize}px monospace`;
+      this.ctx.textAlign = "center";
+      this.ctx.textBaseline = "middle";
+      this.ctx.globalAlpha = 1;
+      this.ctx.fillStyle = "black";
+      const center = button.area.start.add(button.area.size.mul(0.5)).round();
+      this.ctx.fillText(button.text, center.x, center.y);
+    }
+
+    this.ctx.restore();
   }
 
   private drawPaths() {
