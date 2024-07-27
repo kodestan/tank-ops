@@ -228,6 +228,7 @@ export class UI {
     this.panels = [inGameMenuPanel, mainMenuPanel];
 
     const buttonSendTurn = new Button("send turn", GameEventType.SendTurn);
+    const buttonQuitGame = new Button("quit game", GameEventType.QuitGame);
     const buttonZoomIn = new Button("+", GameEventType.ZoomIn, 1.5);
     const buttonZoomOut = new Button("-", GameEventType.ZoomOut, 1.5);
     inGameMenuPanel.attachButton(
@@ -236,16 +237,26 @@ export class UI {
       newArea(0, 0, 1, 1),
     );
     inGameMenuPanel.attachButton(
-      buttonZoomIn,
+      buttonQuitGame,
       newArea(0, 1, 2, 1),
+      newArea(0, 1, 1, 1),
+    );
+    inGameMenuPanel.attachButton(
+      buttonZoomIn,
+      newArea(0, 2, 2, 1),
       newArea(1, 0, 1, 1),
     );
     inGameMenuPanel.attachButton(
       buttonZoomOut,
-      newArea(0, 2, 2, 1),
+      newArea(0, 3, 2, 1),
       newArea(1, 1, 1, 1),
     );
-    const inGameButtons = [buttonSendTurn, buttonZoomIn, buttonZoomOut];
+    const inGameButtons = [
+      buttonSendTurn,
+      buttonQuitGame,
+      buttonZoomIn,
+      buttonZoomOut,
+    ];
     this.buttons.set(UIMode.InGame, inGameButtons);
 
     const buttonStartGame = new Button("start game", GameEventType.StartGame);

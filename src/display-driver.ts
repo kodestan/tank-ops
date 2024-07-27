@@ -14,6 +14,7 @@ type SpriteConfig = { scale: number; sprites: SpritePreset };
 const SPRITES_IMAGE_SRC = "./assets/sprites.png";
 const GREEN_HIGHLIGHT_IDX = 0;
 const YELLOW_HIGHLIGHT_IDX = 1;
+const DEFAULT_PRESET_IDX = 1;
 
 export class DisplayDriver {
   backgroundColor: string = "rgb(50, 50, 50)";
@@ -32,7 +33,7 @@ export class DisplayDriver {
     { scale: 3, sprites: SPRITES_96 }, // 288
     { scale: 4, sprites: SPRITES_96 }, // 384
   ];
-  presetIdx: number = 1;
+  presetIdx: number = DEFAULT_PRESET_IDX;
   curPreset = this.spriteConfigs[this.presetIdx];
 
   constructor(
@@ -111,6 +112,12 @@ export class DisplayDriver {
     this.ctx.canvas.height = canvasSize.y;
 
     this.ui.resize(canvasSize);
+  }
+
+  public reset() {
+    this.presetIdx = DEFAULT_PRESET_IDX;
+    this.curPreset = this.spriteConfigs[this.presetIdx];
+    this.cameraOffset = Vector.zero();
   }
 
   public handleZoomIn() {
@@ -282,7 +289,20 @@ export class DisplayDriver {
   private drawTanks() {
     if (this.gameState === null) return;
     for (const tank of this.gameState.playerTanks) {
-      const sprite = this.getTankSprites(tank.angleBody, tank.angleTurret);
+      const sprite = this.getTankSprites(
+        true,
+        tank.angleBody,
+        tank.angleTurret,
+      );
+      this.drawSprite(sprite.body, tank.p);
+      this.drawSprite(sprite.turret, tank.p);
+    }
+    for (const tank of this.gameState.enemyTanks) {
+      const sprite = this.getTankSprites(
+        false,
+        tank.angleBody,
+        tank.angleTurret,
+      );
       this.drawSprite(sprite.body, tank.p);
       this.drawSprite(sprite.turret, tank.p);
     }
@@ -311,6 +331,7 @@ export class DisplayDriver {
   }
 
   private getTankSprites(
+    isPlayer: boolean,
     angleBody: number,
     angleTurret: number,
   ): { body: Sprite; turret: Sprite } {
@@ -323,8 +344,12 @@ export class DisplayDriver {
       len - 1,
       Math.max(0, Math.round((angleTurret / 360) * len)),
     );
-    const body = this.curPreset.sprites.tanksBodies[bodyIdx];
-    const turret = this.curPreset.sprites.tanksTurrets[turretIdx];
+    let body = this.curPreset.sprites.tanksBodies[bodyIdx];
+    let turret = this.curPreset.sprites.tanksTurrets[turretIdx];
+    if (!isPlayer) {
+      body = this.curPreset.sprites.enemyTanksBodies[bodyIdx];
+      turret = this.curPreset.sprites.enemyTanksTurrets[turretIdx];
+    }
     return { body: body, turret: turret };
   }
 

@@ -3,6 +3,7 @@ export enum GameEventType {
   ZoomOut,
   StartGame,
   SendTurn,
+  QuitGame,
 }
 
 export type GameEvent = {

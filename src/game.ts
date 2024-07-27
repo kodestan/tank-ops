@@ -54,11 +54,12 @@ export const BASE_CONFIG: GameConfig = {
   ],
 
   playerTanks: [
-    // { id: 1, p: new Vector(0, 4) },
     { id: 2, p: new Vector(-3, 8) },
     { id: 3, p: new Vector(0, 0) },
     { id: 4, p: new Vector(2, 0) },
   ],
+
+  enemyTanks: [{ id: 8, p: new Vector(-2, 6) }],
 
   sites: [
     { p: new Vector(2, 2), variant: 2 },
@@ -90,7 +91,6 @@ export class Game {
 
     this.ui = new UI(this.notifier);
     this.displayDriver = new DisplayDriver(ctx, null, this.ui);
-    // this.grid = new Grid(gameState, this.displayDriver);
 
     window.addEventListener("resize", () => {
       this.resize();
@@ -112,6 +112,10 @@ export class Game {
         break;
       case GameEventType.SendTurn:
         console.log("sending turn");
+        break;
+      case GameEventType.QuitGame:
+        this.removeGrid();
+        this.ui.enableMode(UIMode.Main);
         break;
     }
   }
@@ -146,6 +150,12 @@ export class Game {
     const gameState = new GameState(this.config);
     this.grid = new Grid(gameState, this.displayDriver);
     this.displayDriver.gameState = gameState;
+    this.displayDriver.reset();
+  }
+
+  private removeGrid() {
+    this.grid = null;
+    this.displayDriver.gameState = null;
   }
 
   private handleZoomIn() {

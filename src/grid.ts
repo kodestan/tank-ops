@@ -63,7 +63,8 @@ export class Grid {
       case PointerMode.TankNavigation:
         if (
           this.curTank?.path.length === 0 &&
-          this.curT - this.pointerStartTime > T_PRESS_TO_FIRE
+          this.curT - this.pointerStartTime > T_PRESS_TO_FIRE &&
+          this.curTank?.p.eq(this.displayDriver.screenToGridCoords(p))
         ) {
           this.curMode = PointerMode.TankFire;
           this.curTank.shooting = true;
@@ -155,14 +156,32 @@ export class Grid {
     }
 
     const unavailable: Set<string> = new Set();
-    for (let i = 0; i < this.curTank.path.length - 1; i++) {
-      unavailable.add(this.curTank.path[i].toString());
-    }
     if (!conditional) {
       for (const tank of this.gameState.playerTanks) {
         if (tank.id === this.curTank.id) continue;
         unavailable.add(tank.p.toString());
       }
+      for (const tank of this.gameState.enemyTanks) {
+        unavailable.add(tank.p.toString());
+      }
+    }
+
+    for (let i = 0; i < this.curTank.path.length - 1; i++) {
+      if (unavailable.has(this.curTank.path[i].toString()) && !conditional) {
+        set.clear();
+        return;
+      }
+      unavailable.add(this.curTank.path[i].toString());
+    }
+    if (
+      this.curTank.path.length > 0 &&
+      unavailable.has(
+        this.curTank.path[this.curTank.path.length - 1].toString(),
+      ) &&
+      !conditional
+    ) {
+      set.clear();
+      return;
     }
 
     let frontier = [start];

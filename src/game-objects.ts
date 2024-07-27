@@ -3,6 +3,7 @@ import { Vector } from "./vector.js";
 export type GameConfig = {
   hexes: { p: Vector; variant: number }[];
   playerTanks: { id: number; p: Vector }[];
+  enemyTanks: { id: number; p: Vector }[];
   sites: { p: Vector; variant: number }[];
 };
 
@@ -31,6 +32,7 @@ export class GameState {
   hexes: Map<string, Hex>;
   sites: Site[];
   playerTanks: Tank[];
+  enemyTanks: Tank[];
   visibleHexes: Set<string> = new Set();
   availableHexes: Set<string> = new Set();
   conditionallyAvailableHexes: Set<string> = new Set();
@@ -54,8 +56,17 @@ export class GameState {
     this.playerTanks = config.playerTanks.map((t) => ({
       id: t.id,
       p: t.p,
-      angleBody: 0,
-      angleTurret: 0,
+      angleBody: 120,
+      angleTurret: 134,
+      path: [],
+      shooting: false,
+      shootingDir: 0,
+    }));
+    this.enemyTanks = config.enemyTanks.map((t) => ({
+      id: t.id,
+      p: t.p,
+      angleBody: 304,
+      angleTurret: 288,
       path: [],
       shooting: false,
       shootingDir: 0,
