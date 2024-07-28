@@ -290,6 +290,7 @@ export class UI {
   }
 
   public enableMode(mode: UIMode) {
+    this.resetCurrent();
     this.curButtons = this.buttons.get(mode) || [];
   }
 
@@ -338,6 +339,13 @@ export class UI {
       if (button.collides(p)) {
         button.state = state;
       }
+    }
+  }
+
+  private resetCurrent() {
+    for (const button of this.curButtons) {
+      if (button.state === ButtonState.Inactive) continue;
+      button.state = ButtonState.Normal;
     }
   }
 }

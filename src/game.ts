@@ -1,4 +1,4 @@
-import { Hex, GameConfig, GameState } from "./game-objects.js";
+import { GameConfig, GameState } from "./game-objects.js";
 import { Vector } from "./vector.js";
 import { DisplayDriver } from "./display-driver.js";
 import { Grid } from "./grid.js";
@@ -13,64 +13,64 @@ function elementToScreenCoords(elementP: Vector): Vector {
   return elementP.mul(window.devicePixelRatio).round();
 }
 
-export const BASE_CONFIG: GameConfig = {
-  hexes: [
-    { p: new Vector(0, 0), variant: 0 },
-    { p: new Vector(1, 0), variant: 1 },
-    { p: new Vector(2, 0), variant: 2 },
-    { p: new Vector(2, 1), variant: 1 },
-    { p: new Vector(3, 1), variant: 2 },
-    { p: new Vector(4, 1), variant: 0 },
-    { p: new Vector(0, 2), variant: 1 },
-    { p: new Vector(1, 2), variant: 1 },
-    { p: new Vector(2, 2), variant: 1 },
-    { p: new Vector(3, 2), variant: 1 },
-    { p: new Vector(-1, 3), variant: 1 },
-    { p: new Vector(0, 3), variant: 1 },
-    // { p: new Vector(1, 3), variant: 1 },
-    { p: new Vector(2, 3), variant: 1 },
-    { p: new Vector(3, 3), variant: 1 },
-    { p: new Vector(-2, 4), variant: 1 },
-    { p: new Vector(-1, 4), variant: 1 },
-    { p: new Vector(0, 4), variant: 1 },
-    { p: new Vector(1, 4), variant: 1 },
-    // { p: new Vector(2, 4), variant: 1 },
-    // { p: new Vector(3, 4), variant: 1 },
-    // { p: new Vector(4, 4), variant: 1 },
-    // { p: new Vector(5, 4), variant: 1 },
-    { p: new Vector(-2, 5), variant: 1 },
-    { p: new Vector(-1, 5), variant: 1 },
-    // { p: new Vector(0, 5), variant: 1 },
-    // { p: new Vector(1, 5), variant: 1 },
-    // { p: new Vector(2, 5), variant: 1 },
-    { p: new Vector(-3, 6), variant: 1 },
-    { p: new Vector(-2, 6), variant: 1 },
-    // { p: new Vector(-1, 6), variant: 1 },
-    // { p: new Vector(0, 6), variant: 1 },
-    // { p: new Vector(1, 6), variant: 1 },
-    { p: new Vector(-3, 7), variant: 1 },
-    { p: new Vector(-2, 7), variant: 1 },
-    { p: new Vector(-1, 7), variant: 1 },
-    { p: new Vector(-3, 8), variant: 1 },
-    { p: new Vector(-2, 8), variant: 1 },
-    { p: new Vector(-3, 9), variant: 1 },
-  ],
-
-  playerTanks: [
-    { id: 2, p: new Vector(-3, 8) },
-    { id: 3, p: new Vector(0, 0) },
-    { id: 4, p: new Vector(2, 0) },
-  ],
-
-  enemyTanks: [{ id: 8, p: new Vector(-2, 6) }],
-
-  sites: [
-    { p: new Vector(2, 2), variant: 2 },
-    { p: new Vector(4, 1), variant: 4 },
-    { p: new Vector(-2, 8), variant: 5 },
-    { p: new Vector(-3, 7), variant: 6 },
-  ],
-};
+// export const BASE_CONFIG: GameConfig = {
+//   hexes: [
+//     { p: new Vector(0, 0), variant: 0 },
+//     { p: new Vector(1, 0), variant: 1 },
+//     { p: new Vector(2, 0), variant: 2 },
+//     { p: new Vector(2, 1), variant: 1 },
+//     { p: new Vector(3, 1), variant: 2 },
+//     { p: new Vector(4, 1), variant: 0 },
+//     { p: new Vector(0, 2), variant: 1 },
+//     { p: new Vector(1, 2), variant: 1 },
+//     { p: new Vector(2, 2), variant: 1 },
+//     { p: new Vector(3, 2), variant: 1 },
+//     { p: new Vector(-1, 3), variant: 1 },
+//     { p: new Vector(0, 3), variant: 1 },
+//     // { p: new Vector(1, 3), variant: 1 },
+//     { p: new Vector(2, 3), variant: 1 },
+//     { p: new Vector(3, 3), variant: 1 },
+//     { p: new Vector(-2, 4), variant: 1 },
+//     { p: new Vector(-1, 4), variant: 1 },
+//     { p: new Vector(0, 4), variant: 1 },
+//     { p: new Vector(1, 4), variant: 1 },
+//     // { p: new Vector(2, 4), variant: 1 },
+//     // { p: new Vector(3, 4), variant: 1 },
+//     // { p: new Vector(4, 4), variant: 1 },
+//     // { p: new Vector(5, 4), variant: 1 },
+//     { p: new Vector(-2, 5), variant: 1 },
+//     { p: new Vector(-1, 5), variant: 1 },
+//     // { p: new Vector(0, 5), variant: 1 },
+//     // { p: new Vector(1, 5), variant: 1 },
+//     // { p: new Vector(2, 5), variant: 1 },
+//     { p: new Vector(-3, 6), variant: 1 },
+//     { p: new Vector(-2, 6), variant: 1 },
+//     // { p: new Vector(-1, 6), variant: 1 },
+//     // { p: new Vector(0, 6), variant: 1 },
+//     // { p: new Vector(1, 6), variant: 1 },
+//     { p: new Vector(-3, 7), variant: 1 },
+//     { p: new Vector(-2, 7), variant: 1 },
+//     { p: new Vector(-1, 7), variant: 1 },
+//     { p: new Vector(-3, 8), variant: 1 },
+//     { p: new Vector(-2, 8), variant: 1 },
+//     { p: new Vector(-3, 9), variant: 1 },
+//   ],
+//
+//   playerTanks: [
+//     { id: 2, p: new Vector(-3, 8) },
+//     { id: 3, p: new Vector(0, 0) },
+//     { id: 4, p: new Vector(2, 0) },
+//   ],
+//
+//   enemyTanks: [{ id: 8, p: new Vector(-2, 6) }],
+//
+//   sites: [
+//     { p: new Vector(2, 2), variant: 2 },
+//     { p: new Vector(4, 1), variant: 4 },
+//     { p: new Vector(-2, 8), variant: 5 },
+//     { p: new Vector(-3, 7), variant: 6 },
+//   ],
+// };
 
 enum Layer {
   UI,
@@ -85,11 +85,9 @@ export class Game {
   ui: UI;
   isPointerDown = false;
   layer: Layer = Layer.UI;
-  config: GameConfig;
 
-  constructor(ctx: CanvasRenderingContext2D, config: GameConfig) {
+  constructor(ctx: CanvasRenderingContext2D) {
     this.notifier = new Notifier(this);
-    this.config = config;
     this.wsDriver = new WsDriver(WS_URL, this.notifier);
     const canvas = ctx.canvas;
     this.initEventListeners(canvas);
@@ -119,7 +117,9 @@ export class Game {
         this.handleZoomOut();
         break;
       case GameEventType.ButtonSendTurn:
-        console.log("sending turn");
+        if (this.grid === null) return;
+        const actions = this.grid.getActions();
+        this.wsDriver.sendActions(actions);
         break;
       case GameEventType.ButtonQuitGame:
         this.removeGrid();
@@ -130,6 +130,10 @@ export class Game {
         break;
       case GameEventType.WsClose:
         this.ui.setOnlineGameAvailability(false);
+        break;
+      case GameEventType.ReceiveTurnResults:
+        console.log(event.turnResults);
+        this.grid?.animate(event.turnResults);
         break;
     }
   }
@@ -162,7 +166,7 @@ export class Game {
 
   private initGrid(config: GameConfig) {
     const gameState = new GameState(config);
-    this.grid = new Grid(gameState, this.displayDriver);
+    this.grid = new Grid(gameState, this.displayDriver, config);
     this.displayDriver.gameState = gameState;
     this.displayDriver.reset();
   }

@@ -22,6 +22,8 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
+	var gameState *GameState
+
 	for {
 		msgType, msg, err := conn.ReadMessage()
 		if err != nil {
@@ -38,15 +40,28 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 		clientMsg := ClientMessage{}
 		json.Unmarshal(msg, &clientMsg)
 
-		time.Sleep(time.Second)
+		time.Sleep(time.Millisecond * 200)
 
 		switch clientMsg.Type {
 		case ClientStartGame:
+			gameState = newGameState(basicConfig)
 			err := conn.WriteJSON(newStartGameMessage(basicConfig))
 			if err != nil {
 				panic(err)
 			}
 			continue
+		case ClientSendTurn:
+			if gameState == nil {
+				panic("gs is nil")
+			}
+			log.Println(clientMsg.Actions)
+
+			results := gameState.resolveActions(clientMsg.Actions)
+			time.Sleep(time.Millisecond * 150)
+			err := conn.WriteJSON(newTurnResultsMessage(results))
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 }

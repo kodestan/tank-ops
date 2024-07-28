@@ -6,7 +6,7 @@ import {
   Sprite,
   ValidPathsKeys,
 } from "./sprites.js";
-import { GameState } from "./game-objects.js";
+import { GameState, getTankById, Tank } from "./game-objects.js";
 import { ButtonState, UI } from "./ui.js";
 
 type SpriteConfig = { scale: number; sprites: SpritePreset };
@@ -205,7 +205,10 @@ export class DisplayDriver {
 
   private drawPaths() {
     if (this.gameState === null) return;
-    for (const tank of this.gameState.playerTanks) {
+    let moveIdx = 0;
+    for (const id of this.gameState.turnOrder) {
+      const tank = getTankById(this.gameState.playerTanks, id);
+      if (tank === null) continue;
       if (tank.path.length < 2) continue;
 
       const vStart = tank.path[1].sub(tank.path[0]);
@@ -215,13 +218,13 @@ export class DisplayDriver {
       const variantStart = unitVectorToIdx(vStart);
       const variantEnd = unitVectorToIdx(vEnd);
 
-      const spriteStart = this.getPathSprite(variantStart.toString());
-      const spriteEnd = this.getPathSprite(variantEnd.toString());
+      const spriteStart = this.getPathSprite(moveIdx, variantStart.toString());
+      const spriteEnd = this.getPathSprite(moveIdx, variantEnd.toString());
 
       const triangleVariant = [0, 2, 4].includes(variantEnd)
         ? "arrowL"
         : "arrowR";
-      const spriteTriangle = this.getPathSprite(triangleVariant);
+      const spriteTriangle = this.getPathSprite(moveIdx, triangleVariant);
 
       this.drawSprite(spriteStart, tank.p);
       this.drawSprite(spriteEnd, tank.path[tank.path.length - 1]);
@@ -237,10 +240,11 @@ export class DisplayDriver {
           p3,
         ) as ValidPathsKeys[];
         for (const variant of variants) {
-          const sprite = this.getPathSprite(variant);
+          const sprite = this.getPathSprite(moveIdx, variant);
           this.drawSprite(sprite, p2);
         }
       }
+      moveIdx++;
     }
 
     for (const tank of this.gameState.playerTanks) {
@@ -363,7 +367,11 @@ export class DisplayDriver {
     return this.curPreset.sprites.overlays.highlights[variant];
   }
 
-  private getPathSprite(variant: string) {
-    return this.curPreset.sprites.overlays.paths[0][variant as ValidPathsKeys];
+  private getPathSprite(idx: number, variant: string) {
+    const len = this.curPreset.sprites.overlays.paths.length;
+    idx = idx % len;
+    return this.curPreset.sprites.overlays.paths[idx][
+      variant as ValidPathsKeys
+    ];
   }
 }

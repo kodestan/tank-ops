@@ -1,6 +1,21 @@
 import { DisplayDriver } from "./display-driver.js";
-import { GameState, Tank } from "./game-objects.js";
-import { includesVector, isNeighbor, Vector } from "./vector.js";
+import {
+  GameConfig,
+  GameState,
+  getTankById,
+  newTankFire,
+  newTankMove,
+  Tank,
+  TankAction,
+  TurnResult,
+  TurnResultType,
+} from "./game-objects.js";
+import {
+  idxToUnitVector,
+  includesVector,
+  isNeighbor,
+  Vector,
+} from "./vector.js";
 
 const T_PRESS_TO_FIRE = 600;
 
@@ -15,9 +30,9 @@ export class Grid {
   gameState: GameState;
   displayDriver: DisplayDriver;
   // TODO move the config somewhere
-  config = {
-    maxRange: 3,
-    visibilityRange: 2,
+  config: {
+    driveRange: number;
+    visibilityRange: number;
   };
   lastPoint: Vector = Vector.zero();
   curT = 0;
@@ -27,10 +42,34 @@ export class Grid {
 
   curTank: Tank | null = null;
 
-  constructor(gameState: GameState, displayDriver: DisplayDriver) {
+  constructor(
+    gameState: GameState,
+    displayDriver: DisplayDriver,
+    config: GameConfig,
+  ) {
     this.gameState = gameState;
     this.displayDriver = displayDriver;
+    this.config = {
+      driveRange: config.driveRange,
+      visibilityRange: config.visibilityRange,
+    };
     this.recalculateVisibleHexes();
+  }
+
+  public getActions(): TankAction[] {
+    const actions: TankAction[] = [];
+    for (const idx of this.gameState.turnOrder) {
+      const tank = getTankById(this.gameState.playerTanks, idx);
+      if (tank === null) continue;
+      if (tank.shooting) {
+        const shootingVec = idxToUnitVector(tank.shootingDir);
+        if (shootingVec === null) continue;
+        actions.push(newTankFire(idx, shootingVec));
+      } else if (tank.path.length >= 1) {
+        actions.push(newTankMove(idx, tank.path));
+      }
+    }
+    return actions;
   }
 
   public handlePointerStart(p: Vector) {
@@ -46,6 +85,7 @@ export class Grid {
       tank.shootingDir = 0;
       this.curTank = tank;
       this.recalculateTraversable();
+      this.saveOrder(tank.id);
       return;
     }
 
@@ -84,9 +124,17 @@ export class Grid {
 
   public handlePointerEnd(p: Vector) {
     this.isPointerDown = false;
+    if (
+      this.curTank !== null &&
+      this.curMode === PointerMode.TankNavigation &&
+      this.curTank.path.length === 0
+    ) {
+      this.removeOrder(this.curTank.id);
+    }
     this.curMode = PointerMode.None;
     this.curTank = null;
     this.recalculateTraversable();
+    console.log(this.gameState.turnOrder);
   }
 
   public tick() {
@@ -97,6 +145,48 @@ export class Grid {
 
   public setT(t: number) {
     this.curT = t;
+  }
+
+  public animate(turnResults: TurnResult[]) {
+    this.clearPathsAndAims();
+    for (const res of turnResults) {
+      switch (res.type) {
+        case TurnResultType.Move2:
+          const tank = getTankById(this.gameState.playerTanks, res.id);
+          if (tank === null) break;
+          tank.p = res.p1;
+          if (!res.start) {
+            tank.p = res.p2;
+          }
+          break;
+        case TurnResultType.Move3:
+          const t = getTankById(this.gameState.playerTanks, res.id);
+          if (t === null) break;
+          t.p = res.p2;
+          break;
+      }
+    }
+    this.recalculateVisibleHexes();
+  }
+
+  private clearPathsAndAims() {
+    for (const tank of this.gameState.playerTanks) {
+      tank.path = [];
+      tank.shooting = false;
+      tank.shootingDir = 0;
+    }
+  }
+
+  private saveOrder(id: number) {
+    this.removeOrder(id);
+    this.gameState.turnOrder.push(id);
+  }
+
+  private removeOrder(id: number) {
+    const idx = this.gameState.turnOrder.indexOf(id);
+    if (idx !== -1) {
+      this.gameState.turnOrder.splice(idx, 1);
+    }
   }
 
   private handleDrag(p: Vector) {
@@ -113,7 +203,7 @@ export class Grid {
   private handleTankNavigation(p: Vector) {
     if (this.curTank === null) return;
     const gridP = this.displayDriver.screenToGridCoords(p);
-    if (this.curTank.path.length > this.config.maxRange) return;
+    if (this.curTank.path.length > this.config.driveRange) return;
     if (gridP.eq(this.curTank.p)) return;
     const lastOnPath =
       this.curTank.path.length > 0
@@ -146,7 +236,7 @@ export class Grid {
       return;
     }
     let start = this.curTank.p;
-    let range = this.config.maxRange;
+    let range = this.config.driveRange;
     if (this.curTank.path.length > 0) {
       start = this.curTank.path[this.curTank.path.length - 1];
       range -= this.curTank.path.length - 1;
@@ -213,6 +303,7 @@ export class Grid {
   }
 
   private recalculateVisibleHexes() {
+    console.log("recalc", this.config);
     this.gameState.visibleHexes.clear();
 
     for (const tank of this.gameState.playerTanks) {

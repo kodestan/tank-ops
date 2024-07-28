@@ -1,7 +1,8 @@
-import { GameConfig } from "./game-objects";
+import { GameConfig, TurnResult } from "./game-objects";
 
 export enum GameEventType {
   StartGame,
+  ReceiveTurnResults,
   // type only
   ButtonZoomIn,
   ButtonZoomOut,
@@ -28,4 +29,8 @@ export type GameEvent =
   | {
       type: GameEventType.StartGame;
       config: GameConfig;
+    }
+  | {
+      type: GameEventType.ReceiveTurnResults;
+      turnResults: TurnResult[];
     };

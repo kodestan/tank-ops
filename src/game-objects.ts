@@ -1,10 +1,48 @@
 import { Vector } from "./vector.js";
 
+export function getTankById(tanks: Tank[], id: number): Tank | null {
+  for (const tank of tanks) {
+    if (tank.id === id) {
+      return tank;
+    }
+  }
+  return null;
+}
+
+enum TankActionType {
+  Move = 1,
+  Fire = 2,
+}
+
+export type TankMove = {
+  type: TankActionType.Move;
+  id: number;
+  path: Vector[];
+};
+
+export type TankFire = {
+  type: TankActionType.Fire;
+  id: number;
+  dir: Vector;
+};
+
+export function newTankFire(id: number, dir: Vector): TankFire {
+  return { type: TankActionType.Fire, id: id, dir: dir };
+}
+
+export function newTankMove(id: number, path: Vector[]): TankMove {
+  return { type: TankActionType.Move, id: id, path: path };
+}
+
+export type TankAction = TankMove | TankFire;
+
 export type GameConfig = {
   hexes: { p: Vector; variant: number }[];
   playerTanks: { id: number; p: Vector }[];
   enemyTanks: { id: number; p: Vector }[];
   sites: { p: Vector; variant: number }[];
+  driveRange: number;
+  visibilityRange: number;
 };
 
 export type Hex = {
@@ -28,6 +66,64 @@ export type Tank = {
   shootingDir: number;
 };
 
+export enum TurnResultType {
+  Move2 = 1,
+  Move3 = 2,
+  Fire = 3,
+  Explosion = 4,
+  Destroyed = 5,
+  Visible = 6,
+}
+
+type TurnResultMove2 = {
+  type: TurnResultType.Move2;
+  id: number;
+  p1: Vector;
+  p2: Vector;
+  start: boolean;
+};
+
+type TurnResultMove3 = {
+  type: TurnResultType.Move3;
+  id: number;
+  p1: Vector;
+  p2: Vector;
+  p3: Vector;
+};
+
+export type TurnResultFire = {
+  type: TurnResultType.Fire;
+  id: number;
+  dir: Vector;
+};
+
+export type TurnResultExplosion = {
+  type: TurnResultType.Explosion;
+  p: Vector;
+  destroyed: boolean;
+  id: number;
+};
+
+export type TurnResultDestroyed = {
+  type: TurnResultType.Destroyed;
+  p: Vector;
+  id: number;
+};
+
+export type TurnResultVisible = {
+  type: TurnResultType.Visible;
+  p: Vector;
+  id: number;
+};
+
+export type TurnResult =
+  | TurnResultMove2
+  | TurnResultMove3
+  | TurnResultFire
+  | TurnResultExplosion
+  | TurnResultDestroyed
+  | TurnResultVisible;
+
 export class GameState {
   hexes: Map<string, Hex>;
   sites: Site[];
@@ -36,6 +132,7 @@ export class GameState {
   visibleHexes: Set<string> = new Set();
   availableHexes: Set<string> = new Set();
   conditionallyAvailableHexes: Set<string> = new Set();
+  turnOrder: number[] = [];
 
   constructor(config: GameConfig) {
     this.hexes = new Map(

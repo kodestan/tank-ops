@@ -63,7 +63,7 @@ export class Vector {
 
   neighbors(): Vector[] {
     const neighbors = [];
-    for (const nv of idxToUnitVector.values()) {
+    for (const nv of IDX_TO_UNIT_VECTOR.values()) {
       neighbors.push(this.add(nv));
     }
     return neighbors;
@@ -91,7 +91,7 @@ export function includesVector(arr: Vector[], v: Vector) {
   return false;
 }
 
-const idxToUnitVector: Map<number, Vector> = new Map([
+const IDX_TO_UNIT_VECTOR: Map<number, Vector> = new Map([
   [0, new Vector(1, 0)],
   [1, new Vector(0, 1)],
   [2, new Vector(-1, 1)],
@@ -101,8 +101,14 @@ const idxToUnitVector: Map<number, Vector> = new Map([
 ]);
 
 export function unitVectorToIdx(v: Vector): number {
-  for (const [idx, uv] of idxToUnitVector.entries()) {
+  for (const [idx, uv] of IDX_TO_UNIT_VECTOR.entries()) {
     if (v.eq(uv)) return idx;
   }
   return 0;
+}
+
+export function idxToUnitVector(idx: number): Vector | null {
+  const v = IDX_TO_UNIT_VECTOR.get(idx);
+  if (v === undefined) return null;
+  return v;
 }
