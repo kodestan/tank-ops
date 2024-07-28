@@ -74,5 +74,5 @@ func main() {
 	http.Handle("/", http.FileServer(static))
 	http.HandleFunc("/ws", serveWS)
 
-	http.ListenAndServe(":8000", nil)
+	http.ListenAndServe("localhost:8000", nil)
 }

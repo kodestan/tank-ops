@@ -15,6 +15,7 @@ const SPRITES_IMAGE_SRC = "./assets/sprites.png";
 const GREEN_HIGHLIGHT_IDX = 0;
 const YELLOW_HIGHLIGHT_IDX = 1;
 const DEFAULT_PRESET_IDX = 1;
+export const SMOKE_MARK_IDX = 0;
 
 export class DisplayDriver {
   backgroundColor: string = "rgb(50, 50, 50)";
@@ -53,6 +54,7 @@ export class DisplayDriver {
     this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
 
     this.drawHexes();
+    this.drawOverlays();
     this.drawPaths();
     this.drawSites();
     this.drawTanks();
@@ -156,6 +158,15 @@ export class DisplayDriver {
       size.x,
       size.y,
     );
+  }
+
+  private drawOverlays() {
+    if (this.gameState === null) return;
+    for (const overlay of this.gameState?.overlays) {
+      const isLight = this.gameState.visibleHexes.has(overlay.p.toString());
+      const sprite = this.getOverlaySprite(overlay.variant, isLight);
+      this.drawSprite(sprite, overlay.p);
+    }
   }
 
   private drawUI() {
@@ -299,6 +310,7 @@ export class DisplayDriver {
   private drawTanks() {
     if (this.gameState === null) return;
     for (const tank of this.gameState.playerTanks) {
+      if (!tank.visible) continue;
       const sprite = this.getTankSprites(
         true,
         tank.angleBody,
@@ -308,6 +320,7 @@ export class DisplayDriver {
       this.drawSprite(sprite.turret, tank.p);
     }
     for (const tank of this.gameState.enemyTanks) {
+      if (!tank.visible) continue;
       const sprite = this.getTankSprites(
         false,
         tank.angleBody,
@@ -365,6 +378,14 @@ export class DisplayDriver {
 
   private getHighlightSprite(variant: number): Sprite {
     return this.curPreset.sprites.overlays.highlights[variant];
+  }
+
+  private getOverlaySprite(variant: number, light: boolean): Sprite {
+    const overlays = this.curPreset.sprites.overlays.markers;
+    if (light) {
+      return overlays.light[variant];
+    }
+    return overlays.dark[variant];
   }
 
   private getPathSprite(idx: number, variant: string) {

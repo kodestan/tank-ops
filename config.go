@@ -24,6 +24,7 @@ type ClientConfig struct {
 	Sites           []SceneConfig `json:"sites"`
 	DriveRange      int           `json:"driveRange"`
 	VisibilityRange int           `json:"visibilityRange"`
+	FireRange       int           `json:"fireRange"`
 }
 
 var basicConfig = ClientConfig{
@@ -35,6 +36,8 @@ var basicConfig = ClientConfig{
 	},
 	EnemyTanks: []TankConfig{
 		{8, Vector{2, 2}},
+		{9, Vector{0, 1}},
+		{10, Vector{1, 1}},
 	},
 	Hexes: []SceneConfig{
 		{Vector{1, -2}, 2},
@@ -61,4 +64,5 @@ var basicConfig = ClientConfig{
 	},
 	DriveRange:      4,
 	VisibilityRange: 1,
+	FireRange:       2,
 }

@@ -132,7 +132,6 @@ export class Game {
         this.ui.setOnlineGameAvailability(false);
         break;
       case GameEventType.ReceiveTurnResults:
-        console.log(event.turnResults);
         this.grid?.animate(event.turnResults);
         break;
     }

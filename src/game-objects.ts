@@ -1,3 +1,4 @@
+import { SMOKE_MARK_IDX } from "./display-driver.js";
 import { Vector } from "./vector.js";
 
 export function getTankById(tanks: Tank[], id: number): Tank | null {
@@ -64,7 +65,17 @@ export type Tank = {
   path: Vector[];
   shooting: boolean;
   shootingDir: number;
+  visible: boolean;
 };
+
+export type Overlay = {
+  p: Vector;
+  variant: number;
+};
+
+export function newSmokeMark(p: Vector): Overlay {
+  return { p: p, variant: SMOKE_MARK_IDX };
+}
 
 export enum TurnResultType {
   Move2 = 1,
@@ -112,8 +123,9 @@ export type TurnResultDestroyed = {
 
 export type TurnResultVisible = {
   type: TurnResultType.Visible;
-  p: Vector;
   id: number;
+  p: Vector;
+  visible: boolean;
 };
 
 export type TurnResult =
@@ -133,6 +145,7 @@ export class GameState {
   availableHexes: Set<string> = new Set();
   conditionallyAvailableHexes: Set<string> = new Set();
   turnOrder: number[] = [];
+  overlays: Overlay[] = [];
 
   constructor(config: GameConfig) {
     this.hexes = new Map(
@@ -158,7 +171,9 @@ export class GameState {
       path: [],
       shooting: false,
       shootingDir: 0,
+      visible: true,
     }));
+
     this.enemyTanks = config.enemyTanks.map((t) => ({
       id: t.id,
       p: t.p,
@@ -167,6 +182,16 @@ export class GameState {
       path: [],
       shooting: false,
       shootingDir: 0,
+      visible: false,
     }));
+
+    for (const et of this.enemyTanks.values()) {
+      for (const pt of this.playerTanks.values()) {
+        if (pt.p.gridDistance(et.p) <= config.visibilityRange) {
+          et.visible = true;
+          break;
+        }
+      }
+    }
   }
 }

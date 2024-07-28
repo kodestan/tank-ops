@@ -3,12 +3,16 @@ import {
   GameConfig,
   GameState,
   getTankById,
+  newSmokeMark,
   newTankFire,
   newTankMove,
   Tank,
   TankAction,
   TurnResult,
+  TurnResultDestroyed,
+  TurnResultExplosion,
   TurnResultType,
+  TurnResultVisible,
 } from "./game-objects.js";
 import {
   idxToUnitVector,
@@ -134,7 +138,6 @@ export class Grid {
     this.curMode = PointerMode.None;
     this.curTank = null;
     this.recalculateTraversable();
-    console.log(this.gameState.turnOrder);
   }
 
   public tick() {
@@ -164,10 +167,57 @@ export class Grid {
           if (t === null) break;
           t.p = res.p2;
           break;
+        case TurnResultType.Visible:
+          this.resolveVisibility(res);
+          break;
+        case TurnResultType.Fire:
+          console.log(res);
+          break;
+        case TurnResultType.Explosion:
+          console.log(res);
+          this.resolveExplosion(res);
+          break;
+        case TurnResultType.Destroyed:
+          console.log("destroyed", res);
+          this.resolveDestroyed(res);
+          break;
       }
     }
     this.recalculateVisibleHexes();
   }
+
+  // TEMPORARY
+  private resolveDestroyed(res: TurnResultDestroyed) {
+    const tank = getTankById(this.gameState.enemyTanks, res.id);
+    if (tank === null) return;
+    tank.visible = false;
+    this.gameState.overlays.push(newSmokeMark(res.p));
+  }
+
+  private resolveVisibility(res: TurnResultVisible) {
+    const tank = getTankById(this.gameState.enemyTanks, res.id);
+    if (tank === null) return;
+    tank.p = res.p;
+    tank.visible = res.visible;
+  }
+
+  private resolveExplosion(res: TurnResultExplosion) {
+    if (!res.destroyed) return;
+    let tank = getTankById(this.gameState.playerTanks, res.id);
+    let isPlayers = true;
+    if (tank === null) {
+      tank = getTankById(this.gameState.enemyTanks, res.id);
+      isPlayers = false;
+    }
+    if (tank === null) return;
+    tank.visible = false;
+    if (isPlayers) {
+      this.recalculateVisibleHexes();
+    }
+    this.gameState.overlays.push(newSmokeMark(res.p));
+  }
+
+  // END TEMPORARY
 
   private clearPathsAndAims() {
     for (const tank of this.gameState.playerTanks) {
@@ -248,10 +298,11 @@ export class Grid {
     const unavailable: Set<string> = new Set();
     if (!conditional) {
       for (const tank of this.gameState.playerTanks) {
-        if (tank.id === this.curTank.id) continue;
+        if (!tank.visible || tank.id === this.curTank.id) continue;
         unavailable.add(tank.p.toString());
       }
       for (const tank of this.gameState.enemyTanks) {
+        if (!tank.visible) continue;
         unavailable.add(tank.p.toString());
       }
     }
@@ -303,10 +354,10 @@ export class Grid {
   }
 
   private recalculateVisibleHexes() {
-    console.log("recalc", this.config);
     this.gameState.visibleHexes.clear();
 
     for (const tank of this.gameState.playerTanks) {
+      if (!tank.visible) continue;
       for (const hex of this.gameState.hexes.values()) {
         if (tank.p.gridDistance(hex.p) <= this.config.visibilityRange) {
           this.gameState.visibleHexes.add(hex.p.toString());
@@ -318,7 +369,7 @@ export class Grid {
   private getCollidingTank(p: Vector): Tank | null {
     const gridP = this.displayDriver.screenToGridCoords(p);
     for (const tank of this.gameState.playerTanks) {
-      if (tank.p.eq(gridP)) {
+      if (tank.visible && tank.p.eq(gridP)) {
         return tank;
       }
     }
