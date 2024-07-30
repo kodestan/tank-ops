@@ -43,12 +43,20 @@ export class Vector {
     return this.x === other.x && this.y === other.y;
   }
 
+  copy(): Vector {
+    return new Vector(this.x, this.y);
+  }
+
   angle(): number {
     const a = (Math.atan2(this.y, this.x) * 180) / Math.PI;
     if (a < 0) {
       return a + 360;
     }
     return a;
+  }
+
+  length(): number {
+    return Math.sqrt(this.x * this.x + this.y * this.y);
   }
 
   gridDistance(other: Vector): number {
@@ -67,6 +75,22 @@ export class Vector {
       neighbors.push(this.add(nv));
     }
     return neighbors;
+  }
+
+  interpolate(other: Vector, t: number) {
+    if (t <= 0) {
+      return this.copy();
+    }
+    if (t >= 1) {
+      return other.copy();
+    }
+    return this.add(other.sub(this).mul(t));
+  }
+
+  toPlaneCoords(): Vector {
+    const y = (this.y * Math.sqrt(3)) / 2;
+    const x = this.x + this.y * 0.5;
+    return new Vector(x, y);
   }
 }
 

@@ -52,6 +52,11 @@ export type Hex = {
   traversable: boolean;
 };
 
+export type Explosion = {
+  frac: number;
+  p: Vector;
+};
+
 export type Site = {
   p: Vector;
   variant: number;
@@ -60,6 +65,7 @@ export type Site = {
 export type Tank = {
   id: number;
   p: Vector;
+  pF: Vector;
   angleBody: number;
   angleTurret: number;
   path: Vector[];
@@ -86,7 +92,7 @@ export enum TurnResultType {
   Visible = 6,
 }
 
-type TurnResultMove2 = {
+export type TurnResultMove2 = {
   type: TurnResultType.Move2;
   id: number;
   p1: Vector;
@@ -94,7 +100,7 @@ type TurnResultMove2 = {
   start: boolean;
 };
 
-type TurnResultMove3 = {
+export type TurnResultMove3 = {
   type: TurnResultType.Move3;
   id: number;
   p1: Vector;
@@ -146,6 +152,8 @@ export class GameState {
   conditionallyAvailableHexes: Set<string> = new Set();
   turnOrder: number[] = [];
   overlays: Overlay[] = [];
+  explosion: Explosion = { frac: 0, p: Vector.zero() };
+  firingExplosion: Explosion = { frac: 0, p: Vector.zero() };
 
   constructor(config: GameConfig) {
     this.hexes = new Map(
@@ -166,6 +174,7 @@ export class GameState {
     this.playerTanks = config.playerTanks.map((t) => ({
       id: t.id,
       p: t.p,
+      pF: t.p,
       angleBody: 120,
       angleTurret: 134,
       path: [],
@@ -177,6 +186,7 @@ export class GameState {
     this.enemyTanks = config.enemyTanks.map((t) => ({
       id: t.id,
       p: t.p,
+      pF: t.p,
       angleBody: 304,
       angleTurret: 288,
       path: [],

@@ -132,7 +132,7 @@ export class Game {
         this.ui.setOnlineGameAvailability(false);
         break;
       case GameEventType.ReceiveTurnResults:
-        this.grid?.animate(event.turnResults);
+        this.grid?.pushResults(event.turnResults);
         break;
     }
   }

@@ -58,6 +58,7 @@ export class DisplayDriver {
     this.drawPaths();
     this.drawSites();
     this.drawTanks();
+    this.drawExplosions();
     this.drawUI();
   }
 
@@ -214,6 +215,30 @@ export class DisplayDriver {
     this.ctx.restore();
   }
 
+  private drawExplosions() {
+    if (this.gameState === null) return;
+
+    if (this.gameState.firingExplosion.frac > 0) {
+      const sprites = this.curPreset.sprites.smallExplosion;
+      const idx = Math.min(
+        sprites.length - 1,
+        Math.floor(this.gameState.firingExplosion.frac * sprites.length),
+      );
+      const sprite = sprites[idx];
+      this.drawSprite(sprite, this.gameState.firingExplosion.p);
+    }
+
+    if (this.gameState.explosion.frac > 0) {
+      const sprites = this.curPreset.sprites.explosion;
+      const idx = Math.min(
+        sprites.length - 1,
+        Math.floor(this.gameState.explosion.frac * sprites.length),
+      );
+      const sprite = sprites[idx];
+      this.drawSprite(sprite, this.gameState.explosion.p);
+    }
+  }
+
   private drawPaths() {
     if (this.gameState === null) return;
     let moveIdx = 0;
@@ -316,8 +341,8 @@ export class DisplayDriver {
         tank.angleBody,
         tank.angleTurret,
       );
-      this.drawSprite(sprite.body, tank.p);
-      this.drawSprite(sprite.turret, tank.p);
+      this.drawSprite(sprite.body, tank.pF);
+      this.drawSprite(sprite.turret, tank.pF);
     }
     for (const tank of this.gameState.enemyTanks) {
       if (!tank.visible) continue;
@@ -326,8 +351,8 @@ export class DisplayDriver {
         tank.angleBody,
         tank.angleTurret,
       );
-      this.drawSprite(sprite.body, tank.p);
-      this.drawSprite(sprite.turret, tank.p);
+      this.drawSprite(sprite.body, tank.pF);
+      this.drawSprite(sprite.turret, tank.pF);
     }
   }
 
