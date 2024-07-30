@@ -94,6 +94,30 @@ export class Vector {
   }
 }
 
+export function interpolatePath(
+  points: Vector[],
+  fracs: number[],
+  frac: number,
+) {
+  if (frac <= 0) {
+    return points[0].copy();
+  }
+  if (frac >= fracs[fracs.length - 1]) {
+    return points[points.length - 1];
+  }
+
+  let i = 0;
+  let start = 0;
+  while (i < fracs.length && frac >= fracs[i]) {
+    start = fracs[i];
+    i++;
+  }
+
+  const end = fracs[i];
+  const segFrac = (frac - start) / (end - start);
+  return points[i].interpolate(points[i + 1], segFrac);
+}
+
 export function isNeighbor(p1: Vector, p2: Vector): boolean {
   if (!p1.eq(p1.floor())) return false;
   if (!p2.eq(p2.floor())) return false;

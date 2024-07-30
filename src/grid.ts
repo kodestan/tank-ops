@@ -20,16 +20,26 @@ import {
 import {
   idxToUnitVector,
   includesVector,
+  interpolatePath,
   isNeighbor,
   unitVectorToIdx,
   Vector,
 } from "./vector.js";
 
 const T_PRESS_TO_FIRE = 600;
-const TANK_ROTATION_SPEED = 300;
-const TANK_MAX_SPEED = 3;
-const FIRING_DURATION = 200;
-const FIRING_PAUSE = 150;
+// const TANK_ROTATION_SPEED = 300;
+// const TANK_MAX_SPEED = 3;
+// const FIRING_DURATION = 200;
+// const FIRING_PAUSE = 150;
+// const EXPLOSION_DURATION = 400;
+// const EXPLOSION_PAUSE_DURATION = 250;
+
+const TANK_ROTATION_SPEED = 100;
+const TANK_MAX_SPEED = 1.2;
+const FIRING_DURATION = 350;
+const FIRING_PAUSE = 300;
+const EXPLOSION_DURATION = 600;
+const EXPLOSION_PAUSE_DURATION = 250;
 
 enum PointerMode {
   None,
@@ -605,6 +615,8 @@ class ResolverMove3 implements Resolver {
   p1: Vector;
   p2: Vector;
   p3: Vector;
+  points: Vector[];
+  fracs: number[];
 
   t: number;
   aul: number;
@@ -647,6 +659,29 @@ class ResolverMove3 implements Resolver {
     this.aul = aul;
 
     this.t = (d / (aul * TANK_MAX_SPEED)) * 1000;
+
+    const p1 = result.p1.add(result.p2).mul(0.5);
+    const p5 = result.p2.add(result.p3).mul(0.5);
+
+    const p2 = result.p2.add(p1.sub(result.p2).mul(0.7));
+    const p4 = result.p2.add(p5.sub(result.p2).mul(0.7));
+
+    const midToStart = p1.sub(result.p2);
+    const midToEnd = p5.sub(result.p2);
+    const p3 = result.p2.add(midToStart.add(midToEnd).mul(0.25));
+
+    this.points = [p1, p2, p3, p4, p5];
+
+    const lengths = [p2.sub(p1), p3.sub(p2), p4.sub(p3), p5.sub(p4)].map((p) =>
+      p.toPlaneCoords().length(),
+    );
+    const sum = lengths.reduce((s, l) => s + l, 0);
+    this.fracs = [];
+    let cur = 0;
+    for (const l of lengths) {
+      cur += l / sum;
+      this.fracs.push(cur);
+    }
   }
 
   animate() {
@@ -658,11 +693,13 @@ class ResolverMove3 implements Resolver {
     }
     const frac = area / this.aul;
 
-    let p = this.p1.interpolate(this.p2, frac * 2);
-    if (frac >= 0.5) {
-      p = this.p2.interpolate(this.p3, (frac - 0.5) * 2);
-    }
-    this.tank.pF = p;
+    // let p = this.p1.interpolate(this.p2, frac * 2);
+    // if (frac >= 0.5) {
+    //   p = this.p2.interpolate(this.p3, (frac - 0.5) * 2);
+    // }
+    // this.tank.pF = p;
+    console.log(frac, this.points, this.fracs);
+    this.tank.pF = interpolatePath(this.points, this.fracs, frac);
 
     const angleBody = normalize360(this.startAngle + fracT * this.dAngle);
     const angleTurret = normalize360(angleBody + this.turretOffset);
@@ -786,9 +823,6 @@ class ResolverFire implements Resolver {
     );
   }
 }
-
-const EXPLOSION_DURATION = 400;
-const EXPLOSION_PAUSE_DURATION = 250;
 
 class ResolverExplosion implements Resolver {
   grid: Grid;
