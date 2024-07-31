@@ -70,7 +70,7 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 func main() {
 	fmt.Println("hello")
 
-	static := http.Dir("dist")
+	static := http.Dir("web/dist")
 
 	http.Handle("/", http.FileServer(static))
 	http.HandleFunc("/ws", serveWS)
