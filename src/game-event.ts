@@ -4,9 +4,11 @@ export enum GameEventType {
   StartGame,
   ReceiveTurnResults,
   // type only
+  NoneEvent,
   ButtonZoomIn,
   ButtonZoomOut,
   ButtonStartGame,
+  ButtonJoinRoom,
   ButtonSendTurn,
   ButtonQuitGame,
   WsOpen,
@@ -14,9 +16,11 @@ export enum GameEventType {
 }
 
 export type TypeOnlyEvent =
+  | GameEventType.NoneEvent
   | GameEventType.ButtonZoomIn
   | GameEventType.ButtonZoomOut
   | GameEventType.ButtonStartGame
+  | GameEventType.ButtonJoinRoom
   | GameEventType.ButtonSendTurn
   | GameEventType.ButtonQuitGame
   | GameEventType.WsOpen

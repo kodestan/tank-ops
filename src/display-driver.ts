@@ -184,6 +184,7 @@ export class DisplayDriver {
     // }
 
     for (const button of this.ui.curButtons) {
+      if (button.state === ButtonState.Invisible) continue;
       this.ctx.globalAlpha = 0.6;
       this.ctx.fillStyle = "white";
       if (button.state === ButtonState.Pressed) {
@@ -201,7 +202,8 @@ export class DisplayDriver {
       );
 
       let fontSize = button.baseFontSize;
-      if (button.fontSizeMultiplier) fontSize *= button.fontSizeMultiplier;
+      if (button.fontSizeMultiplier !== undefined)
+        fontSize *= button.fontSizeMultiplier;
       fontSize = Math.round(fontSize);
       this.ctx.font = `bold ${fontSize}px monospace`;
       this.ctx.textAlign = "center";
@@ -209,7 +211,7 @@ export class DisplayDriver {
       this.ctx.globalAlpha = 1;
       this.ctx.fillStyle = "black";
       const center = button.area.start.add(button.area.size.mul(0.5)).round();
-      this.ctx.fillText(button.text, center.x, center.y);
+      this.ctx.fillText(button.text || "", center.x, center.y);
     }
 
     this.ctx.restore();

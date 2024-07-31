@@ -8,9 +8,23 @@ export enum ButtonState {
   Normal,
   Pressed,
   Inactive,
+  Invisible,
 }
 
-class Button {
+interface Button {
+  area: Area;
+  text?: string;
+  state: ButtonState;
+  baseFontSize: number;
+  fontSizeMultiplier?: number;
+
+  collides(p: Vector): boolean;
+  getEvent(): GameEvent;
+  // only needed for text input
+  resize(): void;
+}
+
+class StandardButton implements Button {
   area: Area;
   text: string;
   baseFontSize: number;
@@ -43,6 +57,70 @@ class Button {
       return true;
     }
     return false;
+  }
+
+  public getEvent(): GameEvent {
+    return this.event;
+  }
+
+  resize() {
+    // only needed for text input
+  }
+}
+
+class TextInput implements Button {
+  area: Area;
+  state: ButtonState;
+  baseFontSize: number;
+  element: HTMLInputElement;
+
+  constructor(element: HTMLInputElement) {
+    this.area = newArea(0, 0, 0, 0);
+    this.state = ButtonState.Invisible;
+    this.baseFontSize = 0;
+
+    element.maxLength = 5;
+    element.style.fontFamily = "monospace";
+    this.element = element;
+  }
+
+  public hide() {
+    this.element.style.display = "none";
+    this.element.value = "";
+  }
+
+  public show() {
+    this.element.style.display = "";
+  }
+
+  collides(p: Vector): boolean {
+    const end = this.area.start.add(this.area.size);
+    if (
+      p.x >= this.area.start.x &&
+      p.y >= this.area.start.y &&
+      p.x <= end.x &&
+      p.y <= end.y
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  getEvent(): GameEvent {
+    return { type: GameEventType.NoneEvent };
+  }
+
+  resize() {
+    const mul = 1 / window.devicePixelRatio;
+    const start = this.area.start.mul(mul).round();
+    const size = this.area.size.mul(mul).round();
+    const borderWidth = this.area.size.y * 0.08 * mul;
+    this.element.style.left = `${start.x}px`;
+    this.element.style.top = `${start.y}px`;
+    this.element.style.width = `${size.x}px`;
+    this.element.style.height = `${size.y}px`;
+    this.element.style.fontSize = `${this.baseFontSize * mul}px`;
+    this.element.style.borderBottom = `${borderWidth}px solid white`;
   }
 }
 
@@ -168,6 +246,7 @@ class Panel {
       const button = this.buttons[i];
       button.area = { start: buttonStart, size: buttonSize };
       button.baseFontSize = fontSize;
+      button.resize();
     }
   }
 }
@@ -184,10 +263,11 @@ export class UI {
   curButtons: Button[] = [];
 
   specialButtons: {
-    startGame: Button;
+    startGame: StandardButton;
+    textInput: TextInput;
   };
 
-  constructor(notifier: Notifier) {
+  constructor(notifier: Notifier, inputElement: HTMLInputElement) {
     this.notifier = notifier;
 
     const inGameMenuPanel = new Panel(
@@ -231,16 +311,24 @@ export class UI {
 
     this.panels = [inGameMenuPanel, mainMenuPanel];
 
-    const buttonSendTurn = new Button(
+    const buttonSendTurn = new StandardButton(
       "send turn",
       GameEventType.ButtonSendTurn,
     );
-    const buttonQuitGame = new Button(
+    const buttonQuitGame = new StandardButton(
       "quit game",
       GameEventType.ButtonQuitGame,
     );
-    const buttonZoomIn = new Button("+", GameEventType.ButtonZoomIn, 1.5);
-    const buttonZoomOut = new Button("-", GameEventType.ButtonZoomOut, 1.5);
+    const buttonZoomIn = new StandardButton(
+      "+",
+      GameEventType.ButtonZoomIn,
+      1.5,
+    );
+    const buttonZoomOut = new StandardButton(
+      "-",
+      GameEventType.ButtonZoomOut,
+      1.5,
+    );
     inGameMenuPanel.attachButton(
       buttonSendTurn,
       newArea(0, 0, 2, 1),
@@ -269,7 +357,7 @@ export class UI {
     ];
     this.buttons.set(UIMode.InGame, inGameButtons);
 
-    const buttonStartGame = new Button(
+    const buttonStartGame = new StandardButton(
       "start game",
       GameEventType.ButtonStartGame,
     );
@@ -278,7 +366,29 @@ export class UI {
       newArea(1, 0, 2, 1),
       newArea(1, 0, 2, 1),
     );
-    this.buttons.set(UIMode.Main, [buttonStartGame]);
+
+    const buttonInputRoomCode = new TextInput(inputElement);
+    mainMenuPanel.attachButton(
+      buttonInputRoomCode,
+      newArea(1, 1, 2, 1),
+      newArea(1, 1, 2, 1),
+    );
+
+    const buttonJoinRoom = new StandardButton(
+      "join room",
+      GameEventType.ButtonJoinRoom,
+    );
+    mainMenuPanel.attachButton(
+      buttonJoinRoom,
+      newArea(1, 3, 2, 1),
+      newArea(1, 3, 2, 1),
+    );
+
+    this.buttons.set(UIMode.Main, [
+      buttonStartGame,
+      buttonInputRoomCode,
+      buttonJoinRoom,
+    ]);
 
     this.curButtons = this.buttons.get(UIMode.Main) || [];
 
@@ -286,12 +396,18 @@ export class UI {
 
     this.specialButtons = {
       startGame: buttonStartGame,
+      textInput: buttonInputRoomCode,
     };
   }
 
   public enableMode(mode: UIMode) {
     this.resetCurrent();
     this.curButtons = this.buttons.get(mode) || [];
+    for (const button of this.curButtons) {
+      if (button === this.specialButtons.textInput) {
+        this.specialButtons.textInput.show();
+      }
+    }
   }
 
   public resize(space: Vector) {
@@ -310,8 +426,12 @@ export class UI {
 
   public handlePointerEnd(p: Vector) {
     for (const button of this.curButtons) {
-      if (button.collides(p) && button.state !== ButtonState.Inactive) {
-        this.notifier.notify(button.event);
+      if (
+        button.collides(p) &&
+        button.state !== ButtonState.Inactive &&
+        button.state !== ButtonState.Invisible
+      ) {
+        this.notifier.notify(button.getEvent());
       }
     }
     this.mark(p, ButtonState.Normal);
@@ -332,9 +452,17 @@ export class UI {
       : ButtonState.Inactive;
   }
 
+  public getRoomCode(): string {
+    return this.specialButtons.textInput.element.value.toUpperCase();
+  }
+
   private mark(p: Vector, state: ButtonState) {
     for (const button of this.curButtons) {
-      if (button.state === ButtonState.Inactive) continue;
+      if (
+        button.state === ButtonState.Inactive ||
+        button.state === ButtonState.Invisible
+      )
+        continue;
       button.state = ButtonState.Normal;
       if (button.collides(p)) {
         button.state = state;
@@ -344,7 +472,14 @@ export class UI {
 
   private resetCurrent() {
     for (const button of this.curButtons) {
-      if (button.state === ButtonState.Inactive) continue;
+      if (button === this.specialButtons.textInput) {
+        this.specialButtons.textInput.hide();
+      }
+      if (
+        button.state === ButtonState.Inactive ||
+        button.state === ButtonState.Invisible
+      )
+        continue;
       button.state = ButtonState.Normal;
     }
   }

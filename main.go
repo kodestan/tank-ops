@@ -57,6 +57,7 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 			log.Println(clientMsg.Actions)
 
 			results := gameState.resolveActions(clientMsg.Actions)
+			// time.Sleep(time.Millisecond * 1300)
 			time.Sleep(time.Millisecond * 150)
 			err := conn.WriteJSON(newTurnResultsMessage(results))
 			if err != nil {

@@ -92,7 +92,9 @@ export class Game {
     const canvas = ctx.canvas;
     this.initEventListeners(canvas);
 
-    this.ui = new UI(this.notifier);
+    const inputElement = this.createInputElement();
+    ctx.canvas.parentNode?.insertBefore(inputElement, null);
+    this.ui = new UI(this.notifier, inputElement);
     this.displayDriver = new DisplayDriver(ctx, null, this.ui);
 
     window.addEventListener("resize", () => {
@@ -134,6 +136,9 @@ export class Game {
       case GameEventType.ReceiveTurnResults:
         this.grid?.pushResults(event.turnResults);
         break;
+      case GameEventType.ButtonJoinRoom:
+        console.log(this.ui.getRoomCode());
+        break;
     }
   }
 
@@ -161,6 +166,14 @@ export class Game {
       }
       this.handleZoomIn();
     });
+  }
+
+  private createInputElement(): HTMLInputElement {
+    const e = document.createElement("input");
+    e.setAttribute("id", "in-game-input");
+    e.setAttribute("type", "text");
+    e.setAttribute("placeholder", "code");
+    return e;
   }
 
   private initGrid(config: GameConfig) {

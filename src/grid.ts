@@ -27,31 +27,31 @@ import {
 } from "./vector.js";
 
 const T_PRESS_TO_FIRE = 600;
-// const TANK_ROTATION_SPEED = 300;
-// const TANK_MAX_SPEED = 3;
-// const FIRING_DURATION = 200;
-// const FIRING_PAUSE = 150;
-// const EXPLOSION_DURATION = 400;
-// const EXPLOSION_PAUSE_DURATION = 250;
-
-const TANK_ROTATION_SPEED = 100;
-const TANK_MAX_SPEED = 1.2;
-const FIRING_DURATION = 350;
-const FIRING_PAUSE = 300;
-const EXPLOSION_DURATION = 600;
+const TANK_ROTATION_SPEED = 300;
+const TANK_MAX_SPEED = 3;
+const FIRING_DURATION = 200;
+const FIRING_PAUSE = 150;
+const EXPLOSION_DURATION = 400;
 const EXPLOSION_PAUSE_DURATION = 250;
+
+// const TANK_ROTATION_SPEED = 100;
+// const TANK_MAX_SPEED = 1.2;
+// const FIRING_DURATION = 350;
+// const FIRING_PAUSE = 300;
+// const EXPLOSION_DURATION = 600;
+// const EXPLOSION_PAUSE_DURATION = 250;
 
 enum PointerMode {
   None,
   Drag,
   TankNavigation,
   TankFire,
+  Animation,
 }
 
 export class Grid {
   gameState: GameState;
   displayDriver: DisplayDriver;
-  // TODO move the config somewhere
   config: {
     driveRange: number;
     visibilityRange: number;
@@ -156,6 +156,10 @@ export class Grid {
     this.isPointerDown = true;
     this.pointerStartTime = this.curT;
 
+    if (this.curMode === PointerMode.Animation) {
+      return;
+    }
+
     const tank = this.getCollidingTank(p);
     if (tank !== null) {
       this.curMode = PointerMode.TankNavigation;
@@ -197,18 +201,22 @@ export class Grid {
         break;
       case PointerMode.TankFire:
         this.handleTankFire(p);
+        break;
+      case PointerMode.Animation:
+        this.handleDrag(p);
+        break;
     }
     this.lastPoint = p;
   }
 
   public handlePointerEnd(p: Vector) {
     this.isPointerDown = false;
+    if (this.curMode === PointerMode.Animation) return;
     if (
-      this.curTank !== null &&
-      this.curMode === PointerMode.TankNavigation &&
-      this.curTank.path.length === 0
+      this.curMode === PointerMode.TankNavigation ||
+      this.curMode === PointerMode.TankFire
     ) {
-      this.removeOrder(this.curTank.id);
+      this.handleEndTankNavigationFire();
     }
     this.curMode = PointerMode.None;
     this.curTank = null;
@@ -220,6 +228,16 @@ export class Grid {
     if (this.isPointerDown && this.curMode === PointerMode.TankNavigation) {
       this.handlePointerMove(this.lastPoint);
     }
+  }
+
+  public handleStartAnimation() {
+    this.handlePointerEnd(Vector.zero());
+    this.curMode = PointerMode.Animation;
+  }
+
+  public handleEndAnimation() {
+    this.handlePointerEnd(Vector.zero());
+    this.curMode = PointerMode.None;
   }
 
   public setT(t: number) {
@@ -254,9 +272,15 @@ export class Grid {
     }
   }
 
-  // TEMPORARY
-
-  // END TEMPORARY
+  private handleEndTankNavigationFire() {
+    if (
+      this.curTank !== null &&
+      this.curMode === PointerMode.TankNavigation &&
+      this.curTank.path.length === 0
+    ) {
+      this.removeOrder(this.curTank.id);
+    }
+  }
 
   private clearPathsAndAims() {
     for (const tank of this.gameState.playerTanks) {
@@ -381,7 +405,6 @@ export class Grid {
           if (unavailable.has(n.toString())) {
             continue;
           }
-          // checks
           set.add(n.toString());
           newFrontier.push(n);
         }
@@ -429,7 +452,7 @@ class ResolverFinish implements Resolver {
   }
 
   animate(): void {
-    console.log("finish");
+    this.grid.handleEndAnimation();
     this.grid.transition();
   }
 }
@@ -443,7 +466,7 @@ class ResolverIdle implements Resolver {
 
   animate() {
     if (this.grid.peekTurnResult() === null) return;
-    console.log("start animation");
+    this.grid.handleStartAnimation();
     this.grid.transition();
   }
 }
@@ -693,12 +716,6 @@ class ResolverMove3 implements Resolver {
     }
     const frac = area / this.aul;
 
-    // let p = this.p1.interpolate(this.p2, frac * 2);
-    // if (frac >= 0.5) {
-    //   p = this.p2.interpolate(this.p3, (frac - 0.5) * 2);
-    // }
-    // this.tank.pF = p;
-    console.log(frac, this.points, this.fracs);
     this.tank.pF = interpolatePath(this.points, this.fracs, frac);
 
     const angleBody = normalize360(this.startAngle + fracT * this.dAngle);
@@ -884,45 +901,15 @@ class ResolverRest implements Resolver {
   }
 
   animate() {
-    // while (this.turnResult !== null) {
-    //
     switch (this.turnResult.type) {
-      case TurnResultType.Move2:
-        const tank = getTankById(
-          this.grid.gameState.playerTanks,
-          this.turnResult.id,
-        );
-        if (tank === null) break;
-        tank.p = this.turnResult.p1;
-        if (!this.turnResult.start) {
-          tank.p = this.turnResult.p2;
-        }
-        break;
-      case TurnResultType.Move3:
-        const t = getTankById(
-          this.grid.gameState.playerTanks,
-          this.turnResult.id,
-        );
-        if (t === null) break;
-        t.p = this.turnResult.p2;
-        break;
       case TurnResultType.Visible:
         this.resolveVisibility(this.turnResult);
-        break;
-      case TurnResultType.Fire:
-        break;
-      case TurnResultType.Explosion:
-        this.resolveExplosion(this.turnResult);
         break;
       case TurnResultType.Destroyed:
         this.resolveDestroyed(this.turnResult);
         break;
     }
-    // this.turnResult = this.grid.nextTurnResult();
-    // }
     this.grid.recalculateVisibleHexes();
-
-    // const nextHandler = new ResolverIdle(this.grid);
     this.grid.transition();
   }
 
@@ -938,21 +925,5 @@ class ResolverRest implements Resolver {
     if (tank === null) return;
     tank.p = res.p;
     tank.visible = res.visible;
-  }
-
-  private resolveExplosion(res: TurnResultExplosion) {
-    if (!res.destroyed) return;
-    let tank = getTankById(this.grid.gameState.playerTanks, res.id);
-    let isPlayers = true;
-    if (tank === null) {
-      tank = getTankById(this.grid.gameState.enemyTanks, res.id);
-      isPlayers = false;
-    }
-    if (tank === null) return;
-    tank.visible = false;
-    if (isPlayers) {
-      this.grid.recalculateVisibleHexes();
-    }
-    this.grid.gameState.overlays.push(newSmokeMark(res.p));
   }
 }
