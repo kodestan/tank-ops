@@ -1,5 +1,10 @@
 import { GameEventType } from "./game-event.js";
-import { GameConfig, TankAction, TurnResult } from "./game-objects.js";
+import {
+  GameConfig,
+  GameResult,
+  TankAction,
+  TurnResult,
+} from "./game-objects.js";
 import { Notifier } from "./notifier.js";
 import { Vector } from "./vector.js";
 
@@ -10,19 +15,46 @@ function vectorReviver(key: string, value: any) {
   return value;
 }
 
+// ServerStartGame        ServerMessageType = 1
+// Type   ServerMessageType `json:"type"`
+// Config ClientConfig      `json:"config"`
+// ServerTurnResults      ServerMessageType = 2
+// Type        ServerMessageType `json:"type"`
+// TurnResults []TurnResult      `json:"turnResults"`
+// ServerRoomJoined       ServerMessageType = 3
+// Type ServerMessageType `json:"type"`
+// ServerRoomDisconnected ServerMessageType = 4
+// Type ServerMessageType `json:"type"`
+// ServerGameFinished     ServerMessageType = 5
+// Type   ServerMessageType `json:"type"`
+// Result GameResult        `json:"result"`
+
 enum ServerMessageType {
-  JoinRoom = 1,
+  StartGame = 1,
   TurnResults = 2,
+  RoomJoined = 3,
+  RoomDisconnected = 4,
+  GameFinished = 5,
 }
 
 type ServerMessage =
   | {
-      type: ServerMessageType.JoinRoom;
+      type: ServerMessageType.StartGame;
       config: GameConfig;
     }
   | {
       type: ServerMessageType.TurnResults;
       turnResults: TurnResult[];
+    }
+  | {
+      type: ServerMessageType.RoomJoined;
+    }
+  | {
+      type: ServerMessageType.RoomDisconnected;
+    }
+  | {
+      type: ServerMessageType.GameFinished;
+      result: GameResult;
     };
 
 enum ClientMessageType {
@@ -79,7 +111,7 @@ export class WsDriver {
   private handleMessage(e: MessageEvent) {
     const msg = JSON.parse(e.data, vectorReviver) as ServerMessage;
     switch (msg.type) {
-      case ServerMessageType.JoinRoom:
+      case ServerMessageType.StartGame:
         this.notifier.notify({
           type: GameEventType.StartGame,
           config: msg.config,
@@ -90,6 +122,16 @@ export class WsDriver {
           type: GameEventType.ReceiveTurnResults,
           turnResults: msg.turnResults,
         });
+        break;
+      case ServerMessageType.RoomJoined:
+        console.log("joined", msg);
+        break;
+      case ServerMessageType.RoomDisconnected:
+        console.log("disconnected", msg);
+        break;
+      case ServerMessageType.GameFinished:
+        console.log("game finished", msg);
+        break;
     }
   }
 }

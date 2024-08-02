@@ -164,6 +164,9 @@ export class DisplayDriver {
   private drawOverlays() {
     if (this.gameState === null) return;
     for (const overlay of this.gameState?.overlays) {
+      if (!this.gameState.hexes.has(overlay.p.toString())) {
+        continue;
+      }
       const isLight = this.gameState.visibleHexes.has(overlay.p.toString());
       const sprite = this.getOverlaySprite(overlay.variant, isLight);
       this.drawSprite(sprite, overlay.p);
@@ -324,6 +327,9 @@ export class DisplayDriver {
   private drawSites() {
     if (this.gameState === null) return;
     for (const site of this.gameState.sites) {
+      if (!this.gameState.hexes.has(site.p.toString())) {
+        continue;
+      }
       const sprite = this.getSiteSprite(
         site.variant,
         this.gameState.visibleHexes.has(site.p.toString()),

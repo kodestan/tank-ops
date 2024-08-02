@@ -367,8 +367,7 @@ export class UI {
     const buttonInputRoomCode = new TextInput(inputElement);
     mainMenuPanel.attachButton(
       buttonInputRoomCode,
-      // newArea(1, 1, 2, 1),
-      newArea(0, 1, 4, 2),
+      newArea(1, 1, 2, 1),
       newArea(1, 1, 2, 1),
     );
 
@@ -378,8 +377,7 @@ export class UI {
     );
     mainMenuPanel.attachButton(
       buttonJoinRoom,
-      // newArea(1, 2, 2, 1),
-      newArea(0, 3, 4, 2),
+      newArea(1, 2, 2, 1),
       newArea(1, 2, 2, 1),
     );
 

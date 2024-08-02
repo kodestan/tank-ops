@@ -41,7 +41,8 @@ type RoomDisconnectedMessage struct {
 func (m RoomDisconnectedMessage) isServerMessage() {}
 
 type GameFinishedMessage struct {
-	Type ServerMessageType `json:"type"`
+	Type   ServerMessageType `json:"type"`
+	Result GameResult        `json:"result"`
 }
 
 func (m GameFinishedMessage) isServerMessage() {}
@@ -63,8 +64,8 @@ func newRoomDisconnectedMessage() RoomDisconnectedMessage {
 }
 
 // TODO add result
-func newGameFinishedMessage() GameFinishedMessage {
-	return GameFinishedMessage{ServerGameFinished}
+func newGameFinishedMessage(result GameResult) GameFinishedMessage {
+	return GameFinishedMessage{ServerGameFinished, result}
 }
 
 type ClientMessageType int

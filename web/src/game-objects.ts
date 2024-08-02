@@ -10,6 +10,12 @@ export function getTankById(tanks: Tank[], id: number): Tank | null {
   return null;
 }
 
+export enum GameResult {
+  Win = 1,
+  Draw = 2,
+  Lose = 3,
+}
+
 enum TankActionType {
   Move = 1,
   Fire = 2,
@@ -44,6 +50,8 @@ export type GameConfig = {
   sites: { p: Vector; variant: number }[];
   driveRange: number;
   visibilityRange: number;
+  fireRange: number;
+  center: Vector;
 };
 
 export type Hex = {
@@ -90,6 +98,7 @@ export enum TurnResultType {
   Explosion = 4,
   Destroyed = 5,
   Visible = 6,
+  Shrink = 7,
 }
 
 export type TurnResultMove2 = {
@@ -134,13 +143,20 @@ export type TurnResultVisible = {
   visible: boolean;
 };
 
+export type TurnResultShrink = {
+  type: TurnResultType.Shrink;
+  r: number;
+  started: boolean;
+};
+
 export type TurnResult =
   | TurnResultMove2
   | TurnResultMove3
   | TurnResultFire
   | TurnResultExplosion
   | TurnResultDestroyed
-  | TurnResultVisible;
+  | TurnResultVisible
+  | TurnResultShrink;
 
 export class GameState {
   hexes: Map<string, Hex>;

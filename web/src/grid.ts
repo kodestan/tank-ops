@@ -55,6 +55,7 @@ export class Grid {
   config: {
     driveRange: number;
     visibilityRange: number;
+    center: Vector;
   };
   lastPoint: Vector = Vector.zero();
   curT = 0;
@@ -80,6 +81,7 @@ export class Grid {
     this.config = {
       driveRange: config.driveRange,
       visibilityRange: config.visibilityRange,
+      center: config.center,
     };
     this.recalculateVisibleHexes();
     this.animationResolver = new ResolverIdle(this);
@@ -873,6 +875,7 @@ class ResolverExplosion implements Resolver {
     this.animateExplosion(fracExplosion);
     if (frac >= 1) {
       this.grid.recalculateVisibleHexes();
+      console.log("recalc triggered");
       this.grid.transition();
     }
   }
@@ -907,6 +910,18 @@ class ResolverRest implements Resolver {
         break;
       case TurnResultType.Destroyed:
         this.resolveDestroyed(this.turnResult);
+        break;
+      case TurnResultType.Shrink:
+        console.log("shrink", this.turnResult.r, this.turnResult.started);
+        if (this.turnResult.started) {
+          for (const [key, hex] of this.grid.gameState.hexes.entries()) {
+            if (
+              hex.p.gridDistance(this.grid.config.center) >= this.turnResult.r
+            ) {
+              this.grid.gameState.hexes.delete(key);
+            }
+          }
+        }
         break;
     }
     this.grid.recalculateVisibleHexes();

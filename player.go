@@ -306,7 +306,7 @@ func (ps PlayerStateInRoom) handleRoomMessage(rm RoomMessage, ok bool) bool {
 	case RoomTurnResult:
 		err = ps.player.Write(newTurnResultsMessage(rm.turnResults))
 	case RoomGameFinished:
-		err = ps.player.Write(newGameFinishedMessage())
+		err = ps.player.Write(newGameFinishedMessage(rm.gameResult))
 	}
 
 	if err != nil {

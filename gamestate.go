@@ -36,6 +36,18 @@ type Hex struct {
 //	  Destroyed = 5,
 //	  Visible = 6,
 //	}
+type GameResult int
+
+const (
+	Win  GameResult = 1
+	Draw GameResult = 2
+	Lose GameResult = 3
+)
+
+type TurnResult interface {
+	isTurnResult()
+}
+
 type TurnResultType int
 
 const (
@@ -45,6 +57,7 @@ const (
 	Explosion TurnResultType = 4
 	Destroyed TurnResultType = 5
 	Visible   TurnResultType = 6
+	Shrink    TurnResultType = 7
 )
 
 //	type TurnResultMove2 = {
@@ -157,8 +170,20 @@ func newTurnResultVisible(id int, p Vector, visible bool) TurnResultVisible {
 	return TurnResultVisible{Type: Visible, Id: id, P: p, Visible: visible}
 }
 
-type TurnResult interface {
-	isTurnResult()
+//	export type TurnResultShrink = {
+//	  type: TurnResultType.Shrink;
+//	  r: number;
+//	  started: boolean;
+//	};
+type TurnResultShrink struct {
+	Type    TurnResultType `json:"type"`
+	R       int            `json:"r"`
+	Started bool           `json:"started"`
+}
+
+func (tr TurnResultShrink) isTurnResult() {}
+func newTurnResultShrink(r int, started bool) TurnResultShrink {
+	return TurnResultShrink{Type: Shrink, R: r, Started: started}
 }
 
 type GameState struct {
@@ -169,6 +194,8 @@ type GameState struct {
 	hexes   map[Vector]*Hex
 
 	turnP1 bool
+	turn   int
+	radius int
 
 	curPlayer        map[int]*Tank
 	curEnemy         map[int]*Tank
@@ -214,6 +241,8 @@ func NewGameState(cfg GameConfig) *GameState {
 		tanksP1: tanksP1,
 		tanksP2: tanksP2,
 		hexes:   hexes,
+		turn:    1,
+		radius:  cfg.radius,
 	}
 }
 
@@ -240,14 +269,73 @@ func (gs *GameState) ResolveActions(p1, p2 []TankAction) ([]TurnResult, []TurnRe
 		gs.resolveSinglePlayer(p1)
 	}
 
+	gs.resolveShrinking()
+
 	gs.tanksP1 = gs.curPlayer
 	gs.tanksP2 = gs.curEnemy
 	gs.turnP1 = !gs.turnP1
-
 	gs.resetExercised()
+	gs.turn++
 
 	return gs.curResultsPlayer, gs.curResultsEnemy
 
+}
+
+func (gs *GameState) resolveShrinking() {
+	after := gs.cfg.shrinkAfter
+	interval := gs.cfg.shrinkInterval
+	shrinksNow := gs.turn >= after && (gs.turn-after)%interval == 0
+	if !shrinksNow {
+		return
+	}
+	// shrinksNext := gs.turn+1 >= after && (gs.turn+1-after)%interval == 0
+	// fmt.Println(gs.turn)
+	// if shrinksNow {
+	// 	fmt.Println("shrinking now", gs.radius)
+	// }
+	// if shrinksNext {
+	// 	r := gs.radius
+	// 	if shrinksNow {
+	// 		r--
+	// 	}
+	// 	fmt.Println("shrinking next", r)
+	// }
+
+	for _, t := range gs.curEnemy {
+		if !t.destroyed && t.p.distance(gs.cfg.center) >= gs.radius {
+			t.destroyed = true
+			res := newTurnResultDestroyingExplosion(t.p, t.id)
+			gs.curResultsEnemy = append(gs.curResultsEnemy, res)
+			if t.visible {
+				gs.curResultsPlayer = append(gs.curResultsPlayer, res)
+			}
+		}
+	}
+
+	for _, t := range gs.curPlayer {
+		if !t.destroyed && t.p.distance(gs.cfg.center) >= gs.radius {
+			t.destroyed = true
+			res := newTurnResultDestroyingExplosion(t.p, t.id)
+			gs.curResultsPlayer = append(gs.curResultsPlayer, res)
+			if t.visible {
+				gs.curResultsEnemy = append(gs.curResultsEnemy, res)
+			}
+		}
+	}
+
+	for _, h := range gs.hexes {
+		if h.p.distance(gs.cfg.center) >= gs.radius {
+			delete(gs.hexes, h.p)
+		}
+	}
+
+	shrinkResult := newTurnResultShrink(gs.radius, true)
+	gs.curResultsPlayer = append(gs.curResultsPlayer, shrinkResult)
+	gs.curResultsEnemy = append(gs.curResultsEnemy, shrinkResult)
+
+	gs.updateVisibilities()
+
+	gs.radius--
 }
 
 func (gs *GameState) resolveTankMove(path []Vector, tank *Tank) {
