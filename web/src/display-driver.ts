@@ -202,8 +202,6 @@ export class DisplayDriver {
       );
 
       let fontSize = button.baseFontSize;
-      if (button.fontSizeMultiplier !== undefined)
-        fontSize *= button.fontSizeMultiplier;
       fontSize = Math.round(fontSize);
       this.ctx.font = `bold ${fontSize}px monospace`;
       this.ctx.textAlign = "center";

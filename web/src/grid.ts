@@ -924,6 +924,7 @@ class ResolverRest implements Resolver {
     const tank = getTankById(this.grid.gameState.enemyTanks, res.id);
     if (tank === null) return;
     tank.p = res.p;
+    tank.pF = res.p;
     tank.visible = res.visible;
   }
 }

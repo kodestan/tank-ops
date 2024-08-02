@@ -109,8 +109,9 @@ export class Game {
         this.initGrid(event.config);
         this.ui.enableMode(UIMode.InGame);
         break;
-      case GameEventType.ButtonStartGame:
-        this.wsDriver.sendStartGame();
+      case GameEventType.ButtonJoinRoom:
+        const code = this.ui.getRoomCode();
+        this.wsDriver.sendStartGame(code);
         break;
       case GameEventType.ButtonZoomIn:
         this.handleZoomIn();
@@ -135,9 +136,6 @@ export class Game {
         break;
       case GameEventType.ReceiveTurnResults:
         this.grid?.pushResults(event.turnResults);
-        break;
-      case GameEventType.ButtonJoinRoom:
-        console.log(this.ui.getRoomCode());
         break;
     }
   }

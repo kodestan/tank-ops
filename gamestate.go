@@ -1,7 +1,5 @@
 package main
 
-import "fmt"
-
 type TankActionType int
 
 const (
@@ -164,22 +162,29 @@ type TurnResult interface {
 }
 
 type GameState struct {
-	cfg ClientConfig
+	cfg GameConfig
 
-	playerTanks map[int]*Tank
-	enemyTanks  map[int]*Tank
-	hexes       map[Vector]*Hex
+	tanksP1 map[int]*Tank
+	tanksP2 map[int]*Tank
+	hexes   map[Vector]*Hex
+
+	turnP1 bool
+
+	curPlayer        map[int]*Tank
+	curEnemy         map[int]*Tank
+	curResultsPlayer []TurnResult
+	curResultsEnemy  []TurnResult
 }
 
-func newGameState(cfg ClientConfig) *GameState {
+func NewGameState(cfg GameConfig) *GameState {
 	hexes := make(map[Vector]*Hex)
-	playerTanks := make(map[int]*Tank)
-	enemyTanks := make(map[int]*Tank)
+	tanksP1 := make(map[int]*Tank)
+	tanksP2 := make(map[int]*Tank)
 
-	for _, hexCfg := range cfg.Hexes {
+	for _, hexCfg := range cfg.hexes {
 		hexes[hexCfg.P] = &Hex{hexCfg.P, true}
 	}
-	for _, site := range cfg.Sites {
+	for _, site := range cfg.sites {
 		hex, ok := hexes[site.P]
 		if !ok {
 			continue
@@ -187,39 +192,154 @@ func newGameState(cfg ClientConfig) *GameState {
 		hex.traversable = false
 	}
 
-	for _, pt := range cfg.PlayerTanks {
-		playerTanks[pt.Id] = &Tank{id: pt.Id, p: pt.P}
+	for _, pt := range cfg.tanksP1 {
+		tanksP1[pt.Id] = &Tank{id: pt.Id, p: pt.P}
 	}
 
-	for _, et := range cfg.EnemyTanks {
-		enemyTanks[et.Id] = &Tank{id: et.Id, p: et.P}
+	for _, et := range cfg.tanksP2 {
+		tanksP2[et.Id] = &Tank{id: et.Id, p: et.P}
 	}
 
-	for _, enemyTank := range enemyTanks {
-		enemyTank.visible = false
-		for _, playerTank := range playerTanks {
-			fmt.Println(enemyTank.p, playerTank.p, enemyTank.p.distance(playerTank.p))
-			if enemyTank.p.distance(playerTank.p) <= cfg.VisibilityRange {
-				enemyTank.visible = true
-				break
+	for _, t1 := range tanksP1 {
+		for _, t2 := range tanksP2 {
+			if t1.p.distance(t2.p) <= cfg.visibilityRange {
+				t1.visible = true
+				t2.visible = true
 			}
 		}
-		fmt.Println("first pass", enemyTank.visible)
 	}
 
 	return &GameState{
-		cfg:         cfg,
-		playerTanks: playerTanks,
-		enemyTanks:  enemyTanks,
-		hexes:       hexes,
+		cfg:     cfg,
+		tanksP1: tanksP1,
+		tanksP2: tanksP2,
+		hexes:   hexes,
 	}
 }
 
-func (gs *GameState) resolveActions(actions []TankAction) []TurnResult {
-	turnResults := make([]TurnResult, 0)
+func (gs *GameState) ClientConfigs() (ClientConfig, ClientConfig) {
+	return gs.cfg.ClientConfigs()
+}
 
+func (gs *GameState) ResolveActions(p1, p2 []TankAction) ([]TurnResult, []TurnResult) {
+	gs.curResultsPlayer = []TurnResult{}
+	gs.curResultsEnemy = []TurnResult{}
+	gs.curPlayer = gs.tanksP1
+	gs.curEnemy = gs.tanksP2
+
+	if gs.turnP1 {
+		gs.resolveSinglePlayer(p1)
+	}
+	gs.curResultsPlayer, gs.curResultsEnemy = gs.curResultsEnemy, gs.curResultsPlayer
+	gs.curPlayer, gs.curEnemy = gs.curEnemy, gs.curPlayer
+	gs.resolveSinglePlayer(p2)
+	gs.curResultsPlayer, gs.curResultsEnemy = gs.curResultsEnemy, gs.curResultsPlayer
+	gs.curPlayer, gs.curEnemy = gs.curEnemy, gs.curPlayer
+
+	if !gs.turnP1 {
+		gs.resolveSinglePlayer(p1)
+	}
+
+	gs.tanksP1 = gs.curPlayer
+	gs.tanksP2 = gs.curEnemy
+	gs.turnP1 = !gs.turnP1
+
+	gs.resetExercised()
+
+	return gs.curResultsPlayer, gs.curResultsEnemy
+
+}
+
+func (gs *GameState) resolveTankMove(path []Vector, tank *Tank) {
+	validPath := gs.validPath(path, tank)
+	if len(validPath) < 2 {
+		return
+	}
+
+	startResult := newTurnResultMove2(
+		tank.id, validPath[0], validPath[1], true,
+	)
+	gs.curResultsPlayer = append(gs.curResultsPlayer, startResult)
+
+	if tank.visible {
+		gs.curResultsEnemy = append(gs.curResultsEnemy, startResult)
+	}
+
+	for i := 0; i < len(validPath)-2; i++ {
+		p1, p2, p3 := validPath[i], validPath[i+1], validPath[i+2]
+		tank.p = p2
+		gs.updateVisibilities()
+
+		midResult := newTurnResultMove3(
+			tank.id,
+			p1,
+			p2,
+			p3,
+		)
+		gs.curResultsPlayer = append(gs.curResultsPlayer, midResult)
+		if tank.visible {
+			gs.curResultsEnemy = append(gs.curResultsEnemy, midResult)
+		}
+	}
+
+	iLast := len(validPath) - 1
+	tank.p = validPath[iLast]
+	gs.updateVisibilities()
+
+	endResult := newTurnResultMove2(
+		tank.id, validPath[iLast-1], validPath[iLast], false,
+	)
+	gs.curResultsPlayer = append(gs.curResultsPlayer, endResult)
+
+	if tank.visible {
+		gs.curResultsEnemy = append(gs.curResultsEnemy, endResult)
+	}
+}
+
+func (gs *GameState) resolveTankFire(dir Vector, tank *Tank) {
+	if !dir.isUnit() {
+		return
+	}
+	res := newTurnResultFire(tank.id, dir)
+	gs.curResultsPlayer = append(gs.curResultsPlayer, res)
+	if tank.visible {
+		gs.curResultsEnemy = append(gs.curResultsEnemy, res)
+	}
+
+	cur := tank.p
+	for range gs.cfg.fireRange {
+		cur = cur.add(dir)
+		if gs.collides(cur) {
+			break
+		}
+	}
+
+	visPlayer, visEnemy := gs.visible(cur)
+
+	if colTank := gs.getCollidingTank(cur); colTank != nil {
+		colTank.destroyed = true
+		explosion := newTurnResultDestroyingExplosion(cur, colTank.id)
+		if visPlayer {
+			gs.curResultsPlayer = append(gs.curResultsPlayer, explosion)
+		}
+		if visEnemy {
+			gs.curResultsEnemy = append(gs.curResultsEnemy, explosion)
+		}
+		gs.updateVisibilities()
+		return
+	}
+	explosion := newTurnResultExplosion(cur)
+	if visPlayer {
+		gs.curResultsPlayer = append(gs.curResultsPlayer, explosion)
+	}
+	if visEnemy {
+		gs.curResultsEnemy = append(gs.curResultsEnemy, explosion)
+	}
+}
+
+func (gs *GameState) resolveSinglePlayer(actions []TankAction) {
 	for _, action := range actions {
-		tank, ok := gs.playerTanks[action.Id]
+		tank, ok := gs.curPlayer[action.Id]
 		if !ok || tank.exercised || tank.destroyed {
 			continue
 		}
@@ -227,87 +347,56 @@ func (gs *GameState) resolveActions(actions []TankAction) []TurnResult {
 
 		switch action.Type {
 		case TankMove:
-			validPath := gs.validPath(action.Path, tank)
-			if len(validPath) < 2 {
-				break
-			}
-			startResult := newTurnResultMove2(
-				tank.id, validPath[0], validPath[1], true,
-			)
-			turnResults = append(turnResults, startResult)
-
-			for i := 0; i < len(validPath)-2; i++ {
-				p1, p2, p3 := validPath[i], validPath[i+1], validPath[i+2]
-				tank.p = p2
-				turnResults = append(turnResults, gs.updatedVisibilities()...)
-
-				midResult := newTurnResultMove3(
-					tank.id,
-					p1,
-					p2,
-					p3,
-				)
-				turnResults = append(turnResults, midResult)
-			}
-
-			iLast := len(validPath) - 1
-			tank.p = validPath[iLast]
-			turnResults = append(turnResults, gs.updatedVisibilities()...)
-
-			endResult := newTurnResultMove2(
-				tank.id, validPath[iLast-1], validPath[iLast], false,
-			)
-			turnResults = append(turnResults, endResult)
+			gs.resolveTankMove(action.Path, tank)
 		case TankFire:
-			if !action.Dir.isUnit() {
-				break
-			}
-			turnResults = append(turnResults,
-				newTurnResultFire(tank.id, action.Dir),
-			)
-			cur := tank.p
-			for range gs.cfg.FireRange {
-				cur = cur.add(action.Dir)
-				if gs.collides(cur) {
-					break
-				}
-			}
-
-			visible := gs.visible(cur)
-
-			if colTank := gs.getCollidingTank(cur); colTank != nil {
-				colTank.destroyed = true
-				if !visible {
-					break
-				}
-				res := newTurnResultDestroyingExplosion(cur, colTank.id)
-				turnResults = append(turnResults, res)
-				turnResults = append(turnResults, gs.updatedVisibilities()...)
-				break
-			}
-			if visible {
-				turnResults = append(turnResults,
-					newTurnResultExplosion(cur),
-				)
-				break
-			}
+			gs.resolveTankFire(action.Dir, tank)
 		}
 	}
-
-	for _, tank := range gs.playerTanks {
-		tank.exercised = false
-	}
-
-	return turnResults
+	// func (gs *GameState) ResolveActions(actions []TankAction) []TurnResult {
+	// turnResults := make([]TurnResult, 0)
+	//
+	// for _, action := range actions {
+	// 	tank, ok := gs.playerTanks[action.Id]
+	// 	if !ok || tank.exercised || tank.destroyed {
+	// 		continue
+	// 	}
+	// 	tank.exercised = true
+	//
+	// 	switch action.Type {
+	// 	case TankMove:
+	// 	case TankFire:
+	// 	}
+	// }
+	//
+	// for _, tank := range gs.playerTanks {
+	// 	tank.exercised = false
+	// }
+	//
+	// return turnResults
 }
 
-func (gs *GameState) visible(p Vector) bool {
-	for _, t := range gs.playerTanks {
-		if !t.destroyed && t.p.distance(p) <= gs.cfg.VisibilityRange {
-			return true
+func (gs *GameState) resetExercised() {
+	for _, t := range gs.tanksP1 {
+		t.exercised = false
+	}
+	for _, t := range gs.tanksP2 {
+		t.exercised = false
+	}
+}
+
+func (gs *GameState) visible(p Vector) (bool, bool) {
+	visPlayer, visEnemy := false, false
+	for _, t := range gs.curPlayer {
+		if !t.destroyed && t.p.distance(p) <= gs.cfg.visibilityRange {
+			visPlayer = true
 		}
 	}
-	return false
+	for _, t := range gs.curEnemy {
+		if !t.destroyed && t.p.distance(p) <= gs.cfg.visibilityRange {
+			visEnemy = true
+		}
+	}
+	return visPlayer, visEnemy
 }
 
 func (gs *GameState) collides(p Vector) bool {
@@ -322,12 +411,12 @@ func (gs *GameState) collides(p Vector) bool {
 }
 
 func (gs *GameState) getCollidingTank(p Vector) *Tank {
-	for _, t := range gs.enemyTanks {
+	for _, t := range gs.curEnemy {
 		if !t.destroyed && t.p == p {
 			return t
 		}
 	}
-	for _, t := range gs.playerTanks {
+	for _, t := range gs.curPlayer {
 		if !t.destroyed && t.p == p {
 			return t
 		}
@@ -343,20 +432,19 @@ func (gs *GameState) collidesWithSite(p Vector) bool {
 	return true
 }
 
-func (gs *GameState) updatedVisibilities() []TurnResult {
-	fmt.Println("recalc visibility")
-	visibilities := make([]TurnResult, 0)
+func (gs *GameState) playerVisibilities(tanks1, tanks2 map[int]*Tank) []TurnResult {
+	visibilities := []TurnResult{}
 
-	for _, et := range gs.enemyTanks {
+	for _, et := range tanks2 {
 		if et.seen {
 			continue
 		}
 		isVisible := false
-		for _, pt := range gs.playerTanks {
+		for _, pt := range tanks1 {
 			if pt.destroyed {
 				continue
 			}
-			if et.p.distance(pt.p) <= gs.cfg.VisibilityRange {
+			if et.p.distance(pt.p) <= gs.cfg.visibilityRange {
 				isVisible = true
 				break
 			}
@@ -383,19 +471,43 @@ func (gs *GameState) updatedVisibilities() []TurnResult {
 		}
 		et.visible = isVisible
 	}
-	fmt.Println(visibilities)
 
 	return visibilities
 }
 
+func (gs *GameState) updateVisibilities() {
+	visibilitiesPlayer := gs.playerVisibilities(gs.curPlayer, gs.curEnemy)
+	visibilitiesEnemy := gs.playerVisibilities(gs.curEnemy, gs.curPlayer)
+	gs.curResultsPlayer = append(gs.curResultsPlayer, visibilitiesPlayer...)
+	gs.curResultsEnemy = append(gs.curResultsEnemy, visibilitiesEnemy...)
+}
+
+func containsVector(vecs []Vector, v Vector) bool {
+	for _, vv := range vecs {
+		if v == vv {
+			return true
+		}
+	}
+	return false
+}
+
 func (gs *GameState) validPath(path []Vector, tank *Tank) []Vector {
 	validPath := make([]Vector, 0)
-	if len(path) < 2 || len(path) > gs.cfg.DriveRange+1 || tank.p != path[0] {
+	if len(path) < 2 || len(path) > gs.cfg.driveRange+1 || tank.p != path[0] {
 		return validPath
 	}
 
 	for i := 1; i < len(path); i++ {
 		if !gs.isTraversable(path[i]) {
+			break
+		}
+		if path[i] == tank.p {
+			break
+		}
+		if containsVector(validPath, path[i]) {
+			break
+		}
+		if !path[i].sub(path[i-1]).isUnit() {
 			break
 		}
 
@@ -412,13 +524,13 @@ func (gs *GameState) isTraversable(p Vector) bool {
 	if !ok || !hex.traversable {
 		return false
 	}
-	for _, tank := range gs.playerTanks {
+	for _, tank := range gs.curPlayer {
 		if !tank.destroyed && p == tank.p {
 			return false
 		}
 	}
 
-	for _, tank := range gs.enemyTanks {
+	for _, tank := range gs.curEnemy {
 		if !tank.destroyed && p == tank.p {
 			return false
 		}

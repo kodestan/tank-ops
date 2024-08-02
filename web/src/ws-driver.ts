@@ -11,13 +11,13 @@ function vectorReviver(key: string, value: any) {
 }
 
 enum ServerMessageType {
-  StartGame = 1,
+  JoinRoom = 1,
   TurnResults = 2,
 }
 
 type ServerMessage =
   | {
-      type: ServerMessageType.StartGame;
+      type: ServerMessageType.JoinRoom;
       config: GameConfig;
     }
   | {
@@ -33,6 +33,7 @@ enum ClientMessageType {
 type ClientMessage =
   | {
       type: ClientMessageType.StartGame;
+      roomCode: string;
     }
   | {
       type: ClientMessageType.SendTurn;
@@ -51,8 +52,11 @@ export class WsDriver {
     this.conn.onmessage = (e) => this.handleMessage(e);
   }
 
-  public sendStartGame() {
-    const msg: ClientMessage = { type: ClientMessageType.StartGame };
+  public sendStartGame(code: string) {
+    const msg: ClientMessage = {
+      type: ClientMessageType.StartGame,
+      roomCode: code,
+    };
     this.conn.send(JSON.stringify(msg));
   }
 
@@ -75,14 +79,13 @@ export class WsDriver {
   private handleMessage(e: MessageEvent) {
     const msg = JSON.parse(e.data, vectorReviver) as ServerMessage;
     switch (msg.type) {
-      case ServerMessageType.StartGame:
+      case ServerMessageType.JoinRoom:
         this.notifier.notify({
           type: GameEventType.StartGame,
           config: msg.config,
         });
         break;
       case ServerMessageType.TurnResults:
-        // console.log(msg.turnResults);
         this.notifier.notify({
           type: GameEventType.ReceiveTurnResults,
           turnResults: msg.turnResults,

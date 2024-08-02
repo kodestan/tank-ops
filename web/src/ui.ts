@@ -72,12 +72,16 @@ class TextInput implements Button {
   area: Area;
   state: ButtonState;
   baseFontSize: number;
+  fontSizeMultiplier?: number;
   element: HTMLInputElement;
 
-  constructor(element: HTMLInputElement) {
+  constructor(element: HTMLInputElement, fontSizeMultiplier?: number) {
     this.area = newArea(0, 0, 0, 0);
     this.state = ButtonState.Invisible;
     this.baseFontSize = 0;
+    if (fontSizeMultiplier !== undefined) {
+      this.fontSizeMultiplier = fontSizeMultiplier;
+    }
 
     element.maxLength = 5;
     element.style.fontFamily = "monospace";
@@ -246,6 +250,9 @@ class Panel {
       const button = this.buttons[i];
       button.area = { start: buttonStart, size: buttonSize };
       button.baseFontSize = fontSize;
+      if (button.fontSizeMultiplier !== undefined) {
+        button.baseFontSize *= button.fontSizeMultiplier;
+      }
       button.resize();
     }
   }
@@ -263,7 +270,7 @@ export class UI {
   curButtons: Button[] = [];
 
   specialButtons: {
-    startGame: StandardButton;
+    joinRoom: StandardButton;
     textInput: TextInput;
   };
 
@@ -357,20 +364,11 @@ export class UI {
     ];
     this.buttons.set(UIMode.InGame, inGameButtons);
 
-    const buttonStartGame = new StandardButton(
-      "start game",
-      GameEventType.ButtonStartGame,
-    );
-    mainMenuPanel.attachButton(
-      buttonStartGame,
-      newArea(1, 0, 2, 1),
-      newArea(1, 0, 2, 1),
-    );
-
     const buttonInputRoomCode = new TextInput(inputElement);
     mainMenuPanel.attachButton(
       buttonInputRoomCode,
-      newArea(1, 1, 2, 1),
+      // newArea(1, 1, 2, 1),
+      newArea(0, 1, 4, 2),
       newArea(1, 1, 2, 1),
     );
 
@@ -380,22 +378,19 @@ export class UI {
     );
     mainMenuPanel.attachButton(
       buttonJoinRoom,
-      newArea(1, 3, 2, 1),
-      newArea(1, 3, 2, 1),
+      // newArea(1, 2, 2, 1),
+      newArea(0, 3, 4, 2),
+      newArea(1, 2, 2, 1),
     );
 
-    this.buttons.set(UIMode.Main, [
-      buttonStartGame,
-      buttonInputRoomCode,
-      buttonJoinRoom,
-    ]);
+    this.buttons.set(UIMode.Main, [buttonInputRoomCode, buttonJoinRoom]);
 
     this.curButtons = this.buttons.get(UIMode.Main) || [];
 
-    buttonStartGame.state = ButtonState.Inactive;
+    buttonJoinRoom.state = ButtonState.Inactive;
 
     this.specialButtons = {
-      startGame: buttonStartGame,
+      joinRoom: buttonJoinRoom,
       textInput: buttonInputRoomCode,
     };
   }
@@ -447,7 +442,7 @@ export class UI {
   }
 
   public setOnlineGameAvailability(available: boolean) {
-    this.specialButtons.startGame.state = available
+    this.specialButtons.joinRoom.state = available
       ? ButtonState.Normal
       : ButtonState.Inactive;
   }
