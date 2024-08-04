@@ -292,6 +292,12 @@ func (ps PlayerStateInRoom) handleRoomMessage(rm RoomMessage, ok bool) bool {
 		ps.player.done = nil
 		ps.player.room.read = nil
 		ps.player.room.send = nil
+
+		err := ps.player.Write(newRoomDisconnectedMessage())
+		if err != nil {
+			ps.player.conn.Close()
+			return true
+		}
 		ps.player.setState(ps.player.notInRoom)
 		return false
 	}

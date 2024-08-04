@@ -58,13 +58,14 @@ type ServerMessage =
     };
 
 enum ClientMessageType {
-  StartGame = 1,
+  JoinRoom = 1,
   SendTurn = 2,
+  QuitRoom = 3,
 }
 
 type ClientMessage =
   | {
-      type: ClientMessageType.StartGame;
+      type: ClientMessageType.JoinRoom;
       roomCode: string;
     }
   | {
@@ -73,6 +74,7 @@ type ClientMessage =
     };
 
 export class WsDriver {
+  open: boolean = false;
   conn: WebSocket;
   notifier: Notifier;
 
@@ -84,12 +86,19 @@ export class WsDriver {
     this.conn.onmessage = (e) => this.handleMessage(e);
   }
 
+  private send(msg: ClientMessage) {
+    if (!this.open) {
+      return;
+    }
+    this.conn.send(JSON.stringify(msg));
+  }
+
   public sendStartGame(code: string) {
     const msg: ClientMessage = {
-      type: ClientMessageType.StartGame,
+      type: ClientMessageType.JoinRoom,
       roomCode: code,
     };
-    this.conn.send(JSON.stringify(msg));
+    this.send(msg);
   }
 
   public sendActions(actions: TankAction[]) {
@@ -97,14 +106,16 @@ export class WsDriver {
       type: ClientMessageType.SendTurn,
       actions: actions,
     };
-    this.conn.send(JSON.stringify(msg));
+    this.send(msg);
   }
 
   private handleOpen() {
+    this.open = true;
     this.notifier.notify({ type: GameEventType.WsOpen });
   }
 
   private handleClose() {
+    this.open = false;
     this.notifier.notify({ type: GameEventType.WsClose });
   }
 
@@ -124,13 +135,20 @@ export class WsDriver {
         });
         break;
       case ServerMessageType.RoomJoined:
-        console.log("joined", msg);
+        this.notifier.notify({
+          type: GameEventType.RoomJoined,
+        });
         break;
       case ServerMessageType.RoomDisconnected:
-        console.log("disconnected", msg);
+        this.notifier.notify({
+          type: GameEventType.RoomDisconnected,
+        });
         break;
       case ServerMessageType.GameFinished:
-        console.log("game finished", msg);
+        this.notifier.notify({
+          type: GameEventType.GameFinished,
+          result: msg.result,
+        });
         break;
     }
   }

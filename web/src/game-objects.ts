@@ -58,6 +58,7 @@ export type Hex = {
   p: Vector;
   variant: number;
   traversable: boolean;
+  opacity: number;
 };
 
 export type Explosion = {
@@ -175,7 +176,7 @@ export class GameState {
     this.hexes = new Map(
       config.hexes.map((h) => [
         h.p.toString(),
-        { p: h.p, variant: h.variant, traversable: true },
+        { p: h.p, variant: h.variant, traversable: true, opacity: 1 },
       ]),
     );
     this.sites = config.sites.map((s) => ({ p: s.p, variant: s.variant }));

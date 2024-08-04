@@ -250,6 +250,33 @@ func (gs *GameState) ClientConfigs() (ClientConfig, ClientConfig) {
 	return gs.cfg.ClientConfigs()
 }
 
+func (gs *GameState) Result() (GameResult, GameResult, bool) {
+	hasTanksP1 := false
+	for _, t := range gs.tanksP1 {
+		if !t.destroyed {
+			hasTanksP1 = true
+			break
+		}
+	}
+	hasTanksP2 := false
+	for _, t := range gs.tanksP2 {
+		if !t.destroyed {
+			hasTanksP2 = true
+			break
+		}
+	}
+	if hasTanksP1 && hasTanksP2 {
+		return Draw, Draw, false
+	}
+	if !hasTanksP1 && !hasTanksP2 {
+		return Draw, Draw, true
+	}
+	if hasTanksP1 && !hasTanksP2 {
+		return Win, Lose, true
+	}
+	return Lose, Draw, true
+}
+
 func (gs *GameState) ResolveActions(p1, p2 []TankAction) ([]TurnResult, []TurnResult) {
 	gs.curResultsPlayer = []TurnResult{}
 	gs.curResultsEnemy = []TurnResult{}

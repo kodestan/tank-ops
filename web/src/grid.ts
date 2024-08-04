@@ -14,6 +14,7 @@ import {
   TurnResultFire,
   TurnResultMove2,
   TurnResultMove3,
+  TurnResultShrink,
   TurnResultType,
   TurnResultVisible,
 } from "./game-objects.js";
@@ -33,6 +34,7 @@ const FIRING_DURATION = 200;
 const FIRING_PAUSE = 150;
 const EXPLOSION_DURATION = 400;
 const EXPLOSION_PAUSE_DURATION = 250;
+const SHRINK_DURATION = 400;
 
 // const TANK_ROTATION_SPEED = 100;
 // const TANK_MAX_SPEED = 1.2;
@@ -132,6 +134,9 @@ export class Grid {
         return new ResolverExplosion(this, this.curResult, tank);
       }
       return new ResolverExplosion(this, this.curResult);
+    }
+    if (this.curResult.type === TurnResultType.Shrink) {
+      return new ResolverShrink(this, this.curResult);
     }
 
     return new ResolverRest(this);
@@ -875,7 +880,6 @@ class ResolverExplosion implements Resolver {
     this.animateExplosion(fracExplosion);
     if (frac >= 1) {
       this.grid.recalculateVisibleHexes();
-      console.log("recalc triggered");
       this.grid.transition();
     }
   }
@@ -890,6 +894,48 @@ class ResolverExplosion implements Resolver {
     }
     if (frac >= 1) {
       this.grid.gameState.explosion.frac = 0;
+    }
+  }
+}
+
+class ResolverShrink {
+  grid: Grid;
+  result: TurnResultShrink;
+  startT: number;
+  duration = SHRINK_DURATION;
+  center: Vector;
+
+  constructor(grid: Grid, result: TurnResultShrink) {
+    this.grid = grid;
+    this.result = result;
+    this.startT = this.grid.curT;
+    this.center = this.grid.config.center;
+  }
+
+  animate() {
+    if (!this.result.started) {
+      this.grid.transition();
+    }
+    const frac = (this.grid.curT - this.startT) / this.duration;
+    if (frac < 0) return;
+    if (frac >= 1) {
+      for (const [key, hex] of this.grid.gameState.hexes.entries()) {
+        if (hex.p.gridDistance(this.center) >= this.result.r) {
+          this.grid.gameState.hexes.delete(key);
+        }
+      }
+      this.grid.transition();
+      return;
+    }
+    this.animateShrinking(frac);
+  }
+
+  animateShrinking(frac: number) {
+    const opacity = 1 - frac;
+    for (const hex of this.grid.gameState.hexes.values()) {
+      if (hex.p.gridDistance(this.center) >= this.result.r) {
+        hex.opacity = opacity;
+      }
     }
   }
 }
@@ -912,7 +958,6 @@ class ResolverRest implements Resolver {
         this.resolveDestroyed(this.turnResult);
         break;
       case TurnResultType.Shrink:
-        console.log("shrink", this.turnResult.r, this.turnResult.started);
         if (this.turnResult.started) {
           for (const [key, hex] of this.grid.gameState.hexes.entries()) {
             if (

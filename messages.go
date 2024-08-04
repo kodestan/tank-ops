@@ -63,7 +63,6 @@ func newRoomDisconnectedMessage() RoomDisconnectedMessage {
 	return RoomDisconnectedMessage{ServerRoomDisconnected}
 }
 
-// TODO add result
 func newGameFinishedMessage(result GameResult) GameFinishedMessage {
 	return GameFinishedMessage{ServerGameFinished, result}
 }

@@ -1,8 +1,15 @@
-import { GameConfig, TurnResult } from "./game-objects";
+import { GameConfig, GameResult, TurnResult } from "./game-objects";
 
 export enum GameEventType {
+  // ws events
   StartGame,
   ReceiveTurnResults,
+  GameFinished,
+  // ws type only
+  WsOpen,
+  WsClose,
+  RoomJoined,
+  RoomDisconnected,
   // type only
   NoneEvent,
   ButtonZoomIn,
@@ -10,8 +17,7 @@ export enum GameEventType {
   ButtonJoinRoom,
   ButtonSendTurn,
   ButtonQuitGame,
-  WsOpen,
-  WsClose,
+  ButtonCloseModal,
 }
 
 export type TypeOnlyEvent =
@@ -22,7 +28,10 @@ export type TypeOnlyEvent =
   | GameEventType.ButtonSendTurn
   | GameEventType.ButtonQuitGame
   | GameEventType.WsOpen
-  | GameEventType.WsClose;
+  | GameEventType.WsClose
+  | GameEventType.RoomJoined
+  | GameEventType.RoomDisconnected
+  | GameEventType.ButtonCloseModal;
 
 export type GameEvent =
   | {
@@ -35,4 +44,8 @@ export type GameEvent =
   | {
       type: GameEventType.ReceiveTurnResults;
       turnResults: TurnResult[];
+    }
+  | {
+      type: GameEventType.GameFinished;
+      result: GameResult;
     };

@@ -137,6 +137,18 @@ export class Game {
       case GameEventType.ReceiveTurnResults:
         this.grid?.pushResults(event.turnResults);
         break;
+      case GameEventType.GameFinished:
+        console.log("game finished");
+        break;
+      case GameEventType.RoomJoined:
+        console.log("room joined");
+        break;
+      case GameEventType.RoomDisconnected:
+        console.log("room disconnected");
+        break;
+      case GameEventType.NoneEvent:
+        console.log("none event");
+        break;
     }
   }
 
