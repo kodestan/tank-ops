@@ -50,7 +50,7 @@ export class DisplayDriver {
     this.sprites.src = SPRITES_IMAGE_SRC;
   }
 
-  public draw() {
+  public draw(freeze: boolean) {
     this.ctx.fillStyle = this.backgroundColor;
     this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
 
@@ -61,6 +61,16 @@ export class DisplayDriver {
     this.drawTanks();
     this.drawExplosions();
     this.drawUI();
+
+    if (freeze) {
+      this.ctx.save();
+      this.ctx.fillStyle = "black";
+      this.ctx.globalAlpha = 0.6;
+      const x = this.ctx.canvas.width;
+      const y = this.ctx.canvas.height;
+      this.ctx.fillRect(0, 0, x, y);
+      this.ctx.restore();
+    }
   }
 
   public resize() {

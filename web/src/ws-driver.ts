@@ -71,6 +71,9 @@ type ClientMessage =
   | {
       type: ClientMessageType.SendTurn;
       actions: TankAction[];
+    }
+  | {
+      type: ClientMessageType.QuitRoom;
     };
 
 export class WsDriver {
@@ -105,6 +108,13 @@ export class WsDriver {
     const msg: ClientMessage = {
       type: ClientMessageType.SendTurn,
       actions: actions,
+    };
+    this.send(msg);
+  }
+
+  public sendQuitRoom() {
+    const msg: ClientMessage = {
+      type: ClientMessageType.QuitRoom,
     };
     this.send(msg);
   }

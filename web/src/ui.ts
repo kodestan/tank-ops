@@ -73,7 +73,7 @@ class Modal implements Button {
   }
 
   getEvent(): GameEvent {
-    return { type: GameEventType.ButtonCloseModal };
+    return { type: GameEventType.NoneEvent };
   }
 }
 

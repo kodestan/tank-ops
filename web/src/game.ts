@@ -85,6 +85,14 @@ export class Game {
   ui: UI;
   isPointerDown = false;
   layer: Layer = Layer.UI;
+  freeze: boolean = false;
+  states: {
+    mainMenu: StateGame;
+    waitingForRoom: StateGame;
+    waitingRoom: StateGame;
+    inGame: StateGame;
+  };
+  state: StateGame;
 
   constructor(ctx: CanvasRenderingContext2D) {
     this.notifier = new Notifier(this);
@@ -101,55 +109,69 @@ export class Game {
       this.resize();
     });
     this.resize();
+
+    this.states = {
+      mainMenu: new GameStateMainMenu(this),
+      waitingForRoom: new GameStateWaitForRoom(this),
+      waitingRoom: new GameStateWaitingRoom(this),
+      inGame: new GameStateInGame(this),
+    };
+    this.state = this.states.mainMenu;
   }
 
   public update(event: GameEvent) {
-    switch (event.type) {
-      case GameEventType.StartGame:
-        this.initGrid(event.config);
-        this.ui.enableMode(UIMode.InGame);
-        break;
-      case GameEventType.ButtonJoinRoom:
-        const code = this.ui.getRoomCode();
-        this.wsDriver.sendStartGame(code);
-        break;
-      case GameEventType.ButtonZoomIn:
-        this.handleZoomIn();
-        break;
-      case GameEventType.ButtonZoomOut:
-        this.handleZoomOut();
-        break;
-      case GameEventType.ButtonSendTurn:
-        if (this.grid === null) return;
-        const actions = this.grid.getActions();
-        this.wsDriver.sendActions(actions);
-        break;
-      case GameEventType.ButtonQuitGame:
-        this.removeGrid();
-        this.ui.enableMode(UIMode.Main);
-        break;
-      case GameEventType.WsOpen:
-        this.ui.setOnlineGameAvailability(true);
-        break;
-      case GameEventType.WsClose:
-        this.ui.setOnlineGameAvailability(false);
-        break;
-      case GameEventType.ReceiveTurnResults:
-        this.grid?.pushResults(event.turnResults);
-        break;
-      case GameEventType.GameFinished:
-        console.log("game finished");
-        break;
-      case GameEventType.RoomJoined:
-        console.log("room joined");
-        break;
-      case GameEventType.RoomDisconnected:
-        console.log("room disconnected");
-        break;
-      case GameEventType.NoneEvent:
-        console.log("none event");
-        break;
-    }
+    console.log(event, this.state.str);
+    this.state.update(event);
+    // switch (event.type) {
+    //   case GameEventType.StartGame:
+    //     this.initGrid(event.config);
+    //     this.ui.enableMode(UIMode.InGame);
+    //     break;
+    //   case GameEventType.ButtonJoinRoom:
+    //     const code = this.ui.getRoomCode();
+    //     this.wsDriver.sendStartGame(code);
+    //     break;
+    //   case GameEventType.ButtonZoomIn:
+    //     this.handleZoomIn();
+    //     break;
+    //   case GameEventType.ButtonZoomOut:
+    //     this.handleZoomOut();
+    //     break;
+    //   case GameEventType.ButtonSendTurn:
+    //     if (this.grid === null) return;
+    //     const actions = this.grid.getActions();
+    //     this.wsDriver.sendActions(actions);
+    //     break;
+    //   case GameEventType.ButtonQuitGame:
+    //     this.removeGrid();
+    //     this.ui.enableMode(UIMode.Main);
+    //     break;
+    //   case GameEventType.WsOpen:
+    //     this.ui.setOnlineGameAvailability(true);
+    //     break;
+    //   case GameEventType.WsClose:
+    //     this.ui.setOnlineGameAvailability(false);
+    //     break;
+    //   case GameEventType.ReceiveTurnResults:
+    //     this.grid?.pushResults(event.turnResults);
+    //     break;
+    //   case GameEventType.GameFinished:
+    //     console.log("game finished");
+    //     break;
+    //   case GameEventType.RoomJoined:
+    //     console.log("room joined");
+    //     break;
+    //   case GameEventType.RoomDisconnected:
+    //     console.log("room disconnected");
+    //     break;
+    //   case GameEventType.NoneEvent:
+    //     console.log("none event");
+    //     break;
+    // }
+  }
+
+  public setState(state: StateGame) {
+    this.state = state;
   }
 
   public run() {
@@ -186,23 +208,23 @@ export class Game {
     return e;
   }
 
-  private initGrid(config: GameConfig) {
+  public initGrid(config: GameConfig) {
     const gameState = new GameState(config);
     this.grid = new Grid(gameState, this.displayDriver, config);
     this.displayDriver.gameState = gameState;
     this.displayDriver.reset();
   }
 
-  private removeGrid() {
+  public removeGrid() {
     this.grid = null;
     this.displayDriver.gameState = null;
   }
 
-  private handleZoomIn() {
+  public handleZoomIn() {
     this.displayDriver.handleZoomIn();
   }
 
-  private handleZoomOut() {
+  public handleZoomOut() {
     this.displayDriver.handleZoomOut();
   }
 
@@ -236,7 +258,7 @@ export class Game {
   }
 
   private draw(curT: number) {
-    this.displayDriver.draw();
+    this.displayDriver.draw(this.freeze);
     this.grid?.setT(curT);
     this.grid?.tick();
     requestAnimationFrame((t: number) => {
@@ -246,5 +268,153 @@ export class Game {
 
   private resize() {
     this.displayDriver.resize();
+  }
+}
+
+interface StateGame {
+  str: string;
+  update(event: GameEvent): void;
+  // onEnter(): void;
+  // onExit(): void;
+}
+
+class GameStateMainMenu implements StateGame {
+  str = "main-menu";
+  game: Game;
+  constructor(game: Game) {
+    this.game = game;
+  }
+
+  // onEnter() {
+  //   this.game.removeGrid()
+  //   this.game.ui.enableMode(UIMode.Main)
+  // }
+
+  update(event: GameEvent) {
+    switch (event.type) {
+      case GameEventType.WsOpen:
+        this.game.ui.setOnlineGameAvailability(true);
+        break;
+      case GameEventType.WsClose:
+        this.game.freeze = false;
+        this.game.ui.setOnlineGameAvailability(false);
+        this.game.ui.addModal("connection lost");
+        break;
+      case GameEventType.ButtonJoinRoom:
+        const code = this.game.ui.getRoomCode();
+        this.game.wsDriver.sendStartGame(code);
+        this.game.freeze = true;
+        this.game.setState(this.game.states.waitingForRoom);
+        break;
+    }
+  }
+}
+
+class GameStateWaitForRoom implements StateGame {
+  str = "wait-for-room";
+  game: Game;
+  constructor(game: Game) {
+    this.game = game;
+  }
+
+  update(event: GameEvent): void {
+    switch (event.type) {
+      case GameEventType.WsOpen:
+        this.game.ui.setOnlineGameAvailability(true);
+        break;
+      case GameEventType.WsClose:
+        this.game.freeze = false;
+        this.game.ui.setOnlineGameAvailability(false);
+        this.game.ui.addModal("connection lost");
+        this.game.setState(this.game.states.mainMenu);
+        break;
+      case GameEventType.RoomJoined:
+        // TODO waitroom buttons
+        this.game.setState(this.game.states.waitingRoom);
+        break;
+      case GameEventType.RoomDisconnected:
+        this.game.freeze = false;
+        this.game.ui.addModal("cant join room");
+        this.game.setState(this.game.states.mainMenu);
+        break;
+    }
+  }
+}
+class GameStateWaitingRoom implements StateGame {
+  str = "waiting-room";
+  game: Game;
+  constructor(game: Game) {
+    this.game = game;
+  }
+
+  update(event: GameEvent): void {
+    switch (event.type) {
+      case GameEventType.WsOpen:
+        this.game.ui.setOnlineGameAvailability(true);
+        break;
+      case GameEventType.WsClose:
+        this.game.freeze = false;
+        this.game.ui.setOnlineGameAvailability(false);
+        this.game.ui.addModal("connection lost");
+        this.game.setState(this.game.states.inGame);
+        break;
+      case GameEventType.StartGame:
+        this.game.freeze = false;
+        this.game.initGrid(event.config);
+        this.game.ui.enableMode(UIMode.InGame);
+        this.game.setState(this.game.states.inGame);
+        break;
+      case GameEventType.RoomDisconnected:
+        this.game.freeze = false;
+        this.game.ui.addModal("room disconnected");
+        this.game.setState(this.game.states.mainMenu);
+        this.game.freeze;
+        break;
+    }
+  }
+}
+class GameStateInGame implements StateGame {
+  str = "in-game";
+  game: Game;
+  constructor(game: Game) {
+    this.game = game;
+  }
+
+  update(event: GameEvent): void {
+    switch (event.type) {
+      case GameEventType.ReceiveTurnResults:
+        this.game.grid?.pushResults(event.turnResults);
+        break;
+      case GameEventType.GameFinished:
+        this.game.ui.addModal(`result: ${event.result}`);
+        break;
+      case GameEventType.WsClose:
+        this.game.ui.setOnlineGameAvailability(false);
+        this.game.ui.addModal("server disconnected");
+        this.game.removeGrid();
+        this.game.setState(this.game.states.mainMenu);
+        break;
+      case GameEventType.RoomDisconnected:
+        this.game.ui.addModal("room disconnected");
+        this.game.removeGrid();
+        this.game.setState(this.game.states.mainMenu);
+        break;
+      case GameEventType.ButtonZoomIn:
+        this.game.handleZoomIn();
+        break;
+      case GameEventType.ButtonZoomOut:
+        this.game.handleZoomOut();
+        break;
+      case GameEventType.ButtonQuitGame:
+        this.game.wsDriver.sendQuitRoom();
+        this.game.removeGrid();
+        this.game.ui.enableMode(UIMode.Main);
+        break;
+      case GameEventType.ButtonSendTurn:
+        if (this.game.grid === null) return;
+        const actions = this.game.grid.getActions();
+        this.game.wsDriver.sendActions(actions);
+        break;
+    }
   }
 }
