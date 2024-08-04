@@ -1,4 +1,4 @@
-import { SMOKE_MARK_IDX } from "./display-driver.js";
+import { SHRINK_MARK_IDX, SMOKE_MARK_IDX } from "./display-driver.js";
 import { Vector } from "./vector.js";
 
 export function getTankById(tanks: Tank[], id: number): Tank | null {
@@ -90,6 +90,10 @@ export type Overlay = {
 
 export function newSmokeMark(p: Vector): Overlay {
   return { p: p, variant: SMOKE_MARK_IDX };
+}
+
+export function newShrinkMark(p: Vector): Overlay {
+  return { p: p, variant: SHRINK_MARK_IDX };
 }
 
 export enum TurnResultType {

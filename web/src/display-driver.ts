@@ -16,6 +16,7 @@ const GREEN_HIGHLIGHT_IDX = 0;
 const YELLOW_HIGHLIGHT_IDX = 1;
 const DEFAULT_PRESET_IDX = 1;
 export const SMOKE_MARK_IDX = 0;
+export const SHRINK_MARK_IDX = 1;
 
 export class DisplayDriver {
   backgroundColor: string = "rgb(50, 50, 50)";

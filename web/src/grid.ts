@@ -3,6 +3,7 @@ import {
   GameConfig,
   GameState,
   getTankById,
+  newShrinkMark,
   newSmokeMark,
   newTankFire,
   newTankMove,
@@ -908,13 +909,15 @@ class ResolverShrink {
   constructor(grid: Grid, result: TurnResultShrink) {
     this.grid = grid;
     this.result = result;
-    this.startT = this.grid.curT;
+    this.startT = this.result.started ? this.grid.curT : 0;
     this.center = this.grid.config.center;
   }
 
   animate() {
     if (!this.result.started) {
+      this.markShrinkingNext();
       this.grid.transition();
+      return;
     }
     const frac = (this.grid.curT - this.startT) / this.duration;
     if (frac < 0) return;
@@ -928,6 +931,14 @@ class ResolverShrink {
       return;
     }
     this.animateShrinking(frac);
+  }
+
+  markShrinkingNext() {
+    for (const hex of this.grid.gameState.hexes.values()) {
+      if (hex.p.gridDistance(this.center) == this.result.r) {
+        this.grid.gameState.overlays.push(newShrinkMark(hex.p));
+      }
+    }
   }
 
   animateShrinking(frac: number) {

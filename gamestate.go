@@ -312,10 +312,15 @@ func (gs *GameState) resolveShrinking() {
 	after := gs.cfg.shrinkAfter
 	interval := gs.cfg.shrinkInterval
 	shrinksNow := gs.turn >= after && (gs.turn-after)%interval == 0
+	shrinksNext := gs.turn+1 >= after && (gs.turn+1-after)%interval == 0
 	if !shrinksNow {
+		if shrinksNext {
+			shrinkResult := newTurnResultShrink(gs.radius, false)
+			gs.curResultsPlayer = append(gs.curResultsPlayer, shrinkResult)
+			gs.curResultsEnemy = append(gs.curResultsEnemy, shrinkResult)
+		}
 		return
 	}
-	// shrinksNext := gs.turn+1 >= after && (gs.turn+1-after)%interval == 0
 	// fmt.Println(gs.turn)
 	// if shrinksNow {
 	// 	fmt.Println("shrinking now", gs.radius)
@@ -363,6 +368,12 @@ func (gs *GameState) resolveShrinking() {
 	gs.updateVisibilities()
 
 	gs.radius--
+
+	if shrinksNext {
+		shrinkResult := newTurnResultShrink(gs.radius, false)
+		gs.curResultsPlayer = append(gs.curResultsPlayer, shrinkResult)
+		gs.curResultsEnemy = append(gs.curResultsEnemy, shrinkResult)
+	}
 }
 
 func (gs *GameState) resolveTankMove(path []Vector, tank *Tank) {
