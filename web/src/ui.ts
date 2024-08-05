@@ -324,6 +324,8 @@ export class UI {
     joinRoom: StandardButton;
     textInput: TextInput;
     sendTurn: StandardButton;
+    mute: StandardButton;
+    unmute: StandardButton;
   };
 
   constructor(notifier: Notifier, inputElement: HTMLInputElement) {
@@ -353,18 +355,18 @@ export class UI {
         maxHeight: 0.88,
         buff: 0.04,
         baseFontSize: 20,
-        aspectRatio: 2 / 3,
+        aspectRatio: 5 / 6,
         align: Align.Center,
-        grid: new Vector(4, 8),
+        grid: new Vector(4, 6),
       },
       {
         maxWidth: 0.8,
         maxHeight: 0.88,
         buff: 0.05,
         baseFontSize: 20,
-        aspectRatio: 2 / 3,
+        aspectRatio: 5 / 6,
         align: Align.Center,
-        grid: new Vector(4, 8),
+        grid: new Vector(4, 6),
       },
     );
     const modalPanel = new Panel(
@@ -408,6 +410,11 @@ export class UI {
       GameEventType.ButtonZoomOut,
       1.5,
     );
+    const buttonUnmute = new StandardButton(
+      "unmute",
+      GameEventType.ButtonUnmute,
+    );
+    const buttonMute = new StandardButton("mute", GameEventType.ButtonMute);
     inGameMenuPanel.attachButton(
       buttonSendTurn,
       newArea(0, 0, 2, 1),
@@ -428,13 +435,28 @@ export class UI {
       newArea(0, 3, 2, 1),
       newArea(1, 1, 1, 1),
     );
+    inGameMenuPanel.attachButton(
+      buttonUnmute,
+      newArea(0, 4, 2, 1),
+      newArea(2, 0, 1, 1),
+    );
+    inGameMenuPanel.attachButton(
+      buttonMute,
+      newArea(0, 4, 2, 1),
+      newArea(2, 0, 1, 1),
+    );
 
     const inGameButtons = [
       buttonSendTurn,
       buttonQuitGame,
       buttonZoomIn,
       buttonZoomOut,
+      buttonUnmute,
+      buttonMute,
     ];
+    buttonMute.state = ButtonState.Invisible;
+    buttonUnmute.state = ButtonState.Inactive;
+
     this.buttons.set(UIMode.InGame, inGameButtons);
 
     const buttonInputRoomCode = new TextInput(inputElement);
@@ -474,6 +496,8 @@ export class UI {
       joinRoom: buttonJoinRoom,
       textInput: buttonInputRoomCode,
       sendTurn: buttonSendTurn,
+      mute: buttonMute,
+      unmute: buttonUnmute,
     };
 
     this.modal = new Modal();
@@ -482,6 +506,26 @@ export class UI {
       newArea(0, 0, 4, 8),
       newArea(0, 0, 4, 8),
     );
+  }
+
+  public setAudioButton(mute: boolean) {
+    this.specialButtons.mute.state = ButtonState.Invisible;
+    this.specialButtons.unmute.state = ButtonState.Invisible;
+    if (mute) {
+      this.specialButtons.mute.state = ButtonState.Normal;
+    } else {
+      this.specialButtons.unmute.state = ButtonState.Normal;
+    }
+  }
+
+  public allowUnmute() {
+    console.log(
+      this.specialButtons.unmute.state === ButtonState.Invisible,
+      "dddwdw",
+    );
+    if (this.specialButtons.unmute.state === ButtonState.Inactive) {
+      this.specialButtons.unmute.state = ButtonState.Normal;
+    }
   }
 
   public hasModal(): boolean {
@@ -552,6 +596,7 @@ export class UI {
         button.state !== ButtonState.Invisible
       ) {
         this.notifier.notify(button.getEvent());
+        break;
       }
     }
     this.mark(p, ButtonState.Normal);

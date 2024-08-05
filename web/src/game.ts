@@ -6,8 +6,10 @@ import { UI, UIMode } from "./ui.js";
 import { Notifier } from "./notifier.js";
 import { GameEvent, GameEventType } from "./game-event.js";
 import { WsDriver } from "./ws-driver.js";
+import { AudioDriver } from "./audio-driver.js";
 
 const WS_URL = "ws";
+const AUDIO_FAIL_MESSAGE = "failed to load audio";
 
 function resultString(result: GameResult): string {
   switch (result) {
@@ -30,6 +32,7 @@ enum Layer {
 }
 
 export class Game {
+  audioDriver: AudioDriver;
   notifier: Notifier;
   displayDriver: DisplayDriver;
   wsDriver: WsDriver;
@@ -48,6 +51,7 @@ export class Game {
 
   constructor(ctx: CanvasRenderingContext2D) {
     this.notifier = new Notifier(this);
+    this.audioDriver = new AudioDriver(this.notifier);
     this.wsDriver = new WsDriver(WS_URL, this.notifier);
     const canvas = ctx.canvas;
     this.initEventListeners(canvas);
@@ -117,7 +121,13 @@ export class Game {
 
   public initGrid(config: GameConfig) {
     const gameState = new GameState(config);
-    this.grid = new Grid(gameState, this.displayDriver, config, this.notifier);
+    this.grid = new Grid(
+      gameState,
+      this.displayDriver,
+      config,
+      this.notifier,
+      this.audioDriver,
+    );
     this.displayDriver.gameState = gameState;
     this.displayDriver.reset();
   }
@@ -191,7 +201,9 @@ class GameStateMainMenu implements StateGame {
     this.game = game;
   }
 
-  onEnter(): void {}
+  onEnter(): void {
+    this.game.audioDriver.setSoundGlobal(false);
+  }
 
   update(event: GameEvent) {
     switch (event.type) {
@@ -209,6 +221,12 @@ class GameStateMainMenu implements StateGame {
         this.game.freeze = true;
         this.game.setState(this.game.states.waitingForRoom);
         break;
+      case GameEventType.AudioLoadFail:
+        this.game.ui.addModal(AUDIO_FAIL_MESSAGE);
+        break;
+      case GameEventType.AudioLoadSuccess:
+        this.game.ui.allowUnmute();
+        break;
     }
   }
 }
@@ -220,7 +238,9 @@ class GameStateWaitForRoom implements StateGame {
     this.game = game;
   }
 
-  onEnter(): void {}
+  onEnter(): void {
+    this.game.audioDriver.setSoundGlobal(false);
+  }
 
   update(event: GameEvent): void {
     switch (event.type) {
@@ -243,6 +263,12 @@ class GameStateWaitForRoom implements StateGame {
         this.game.ui.addModal("cant join room");
         this.game.setState(this.game.states.mainMenu);
         break;
+      case GameEventType.AudioLoadFail:
+        this.game.ui.addModal(AUDIO_FAIL_MESSAGE);
+        break;
+      case GameEventType.AudioLoadSuccess:
+        this.game.ui.allowUnmute();
+        break;
     }
   }
 }
@@ -253,7 +279,9 @@ class GameStateWaitingRoom implements StateGame {
     this.game = game;
   }
 
-  onEnter(): void {}
+  onEnter(): void {
+    this.game.audioDriver.setSoundGlobal(false);
+  }
 
   update(event: GameEvent): void {
     switch (event.type) {
@@ -282,6 +310,12 @@ class GameStateWaitingRoom implements StateGame {
         this.game.ui.enableMode(UIMode.Main);
         this.game.setState(this.game.states.mainMenu);
         break;
+      case GameEventType.AudioLoadFail:
+        this.game.ui.addModal(AUDIO_FAIL_MESSAGE);
+        break;
+      case GameEventType.AudioLoadSuccess:
+        this.game.ui.allowUnmute();
+        break;
     }
   }
 }
@@ -300,6 +334,7 @@ class GameStateInGame implements StateGame {
   }
 
   onEnter() {
+    this.game.audioDriver.setSoundGlobal(true);
     this.isAnimating = false;
     this.modalQueue = [];
     this.gameFinished = false;
@@ -383,6 +418,21 @@ class GameStateInGame implements StateGame {
         if (!this.gameFinished && !this.isAnimating) {
           this.game.ui.setSendTurnAvailability(true);
         }
+        break;
+      case GameEventType.AudioLoadFail:
+        this.game.ui.addModal(AUDIO_FAIL_MESSAGE);
+        break;
+      case GameEventType.AudioLoadSuccess:
+        this.game.ui.allowUnmute();
+        break;
+      case GameEventType.ButtonUnmute:
+        this.game.ui.setAudioButton(true);
+        this.game.audioDriver.setSoundInGame(true);
+        break;
+      case GameEventType.ButtonMute:
+        this.game.ui.setAudioButton(false);
+        this.game.audioDriver.setSoundInGame(false);
+        break;
     }
   }
 }
