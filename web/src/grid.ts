@@ -1,4 +1,5 @@
 import { DisplayDriver } from "./display-driver.js";
+import { GameEventType } from "./game-event.js";
 import {
   GameConfig,
   GameState,
@@ -19,6 +20,7 @@ import {
   TurnResultType,
   TurnResultVisible,
 } from "./game-objects.js";
+import { Notifier } from "./notifier.js";
 import {
   idxToUnitVector,
   includesVector,
@@ -55,6 +57,7 @@ enum PointerMode {
 export class Grid {
   gameState: GameState;
   displayDriver: DisplayDriver;
+  notifier: Notifier;
   config: {
     driveRange: number;
     visibilityRange: number;
@@ -78,6 +81,7 @@ export class Grid {
     gameState: GameState,
     displayDriver: DisplayDriver,
     config: GameConfig,
+    notifier: Notifier,
   ) {
     this.gameState = gameState;
     this.displayDriver = displayDriver;
@@ -88,6 +92,7 @@ export class Grid {
     };
     this.recalculateVisibleHexes();
     this.animationResolver = new ResolverIdle(this);
+    this.notifier = notifier;
   }
 
   public transition() {
@@ -108,9 +113,9 @@ export class Grid {
 
   private getAnimationResolver(): Resolver {
     if (this.curResult === null) {
-      if (this.prevResult === null) {
-        return new ResolverIdle(this);
-      }
+      return new ResolverIdle(this);
+    }
+    if (this.curResult.type === TurnResultType.EndTurn) {
       return new ResolverFinish(this);
     }
     if (this.curResult.type === TurnResultType.Move2) {
@@ -170,6 +175,7 @@ export class Grid {
 
     const tank = this.getCollidingTank(p);
     if (tank !== null) {
+      this.notifier.notify({ type: GameEventType.TankManipulation });
       this.curMode = PointerMode.TankNavigation;
       tank.path = [];
       tank.shooting = false;
@@ -246,6 +252,7 @@ export class Grid {
   public handleEndAnimation() {
     this.handlePointerEnd(Vector.zero());
     this.curMode = PointerMode.None;
+    this.notifier.notify({ type: GameEventType.AnimationEnd });
   }
 
   public setT(t: number) {
@@ -278,6 +285,7 @@ export class Grid {
     } else {
       this.turnResults.push(...turnResults);
     }
+    this.turnResults.push({ type: TurnResultType.EndTurn });
   }
 
   private handleEndTankNavigationFire() {
@@ -554,6 +562,9 @@ class ResolverMove2 implements Resolver {
     this.endAngle = unitVectorToIdx(result.p2.sub(result.p1)) * 60;
     this.dAngle = normalize180(this.endAngle - this.startAngle);
     this.tRotation = (Math.abs(this.dAngle) / TANK_ROTATION_SPEED) * 1000;
+    if (!this.result.start) {
+      this.tRotation = 0;
+    }
 
     this.startT = this.grid.curT;
     this.startF = this.result.p1;

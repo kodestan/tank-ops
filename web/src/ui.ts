@@ -308,6 +308,7 @@ class Panel {
 
 export enum UIMode {
   Main,
+  WaitingRoom,
   InGame,
 }
 
@@ -322,6 +323,7 @@ export class UI {
   specialButtons: {
     joinRoom: StandardButton;
     textInput: TextInput;
+    sendTurn: StandardButton;
   };
 
   constructor(notifier: Notifier, inputElement: HTMLInputElement) {
@@ -451,8 +453,18 @@ export class UI {
       newArea(1, 2, 2, 1),
       newArea(1, 2, 2, 1),
     );
+    this.buttons.set(UIMode.Main, [buttonJoinRoom, buttonInputRoomCode]);
 
-    this.buttons.set(UIMode.Main, [buttonInputRoomCode, buttonJoinRoom]);
+    const buttonQuitRoom = new StandardButton(
+      "quit room",
+      GameEventType.ButtonQuitGame,
+    );
+    mainMenuPanel.attachButton(
+      buttonQuitRoom,
+      newArea(1, 2, 2, 1),
+      newArea(1, 2, 2, 1),
+    );
+    this.buttons.set(UIMode.WaitingRoom, [buttonQuitRoom]);
 
     this.curButtons = this.buttons.get(UIMode.Main) || [];
 
@@ -461,6 +473,7 @@ export class UI {
     this.specialButtons = {
       joinRoom: buttonJoinRoom,
       textInput: buttonInputRoomCode,
+      sendTurn: buttonSendTurn,
     };
 
     this.modal = new Modal();
@@ -487,13 +500,15 @@ export class UI {
 
   public addModal(text: string) {
     this.modalTextQueue.push(text);
-    this.modal.text = text;
+    if (this.modalTextQueue.length === 1) {
+      this.modal.text = text;
+    }
   }
 
   public removeModal() {
-    this.modalTextQueue.pop();
+    this.modalTextQueue.shift();
     if (this.hasModal()) {
-      this.modal.text = this.modalTextQueue[this.modalTextQueue.length - 1];
+      this.modal.text = this.modalTextQueue[0];
     }
   }
 
@@ -554,6 +569,12 @@ export class UI {
 
   public setOnlineGameAvailability(available: boolean) {
     this.specialButtons.joinRoom.state = available
+      ? ButtonState.Normal
+      : ButtonState.Inactive;
+  }
+
+  public setSendTurnAvailability(available: boolean) {
+    this.specialButtons.sendTurn.state = available
       ? ButtonState.Normal
       : ButtonState.Inactive;
   }

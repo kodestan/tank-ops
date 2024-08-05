@@ -104,6 +104,7 @@ export enum TurnResultType {
   Destroyed = 5,
   Visible = 6,
   Shrink = 7,
+  EndTurn = 1 << 8,
 }
 
 export type TurnResultMove2 = {
@@ -154,6 +155,10 @@ export type TurnResultShrink = {
   started: boolean;
 };
 
+export type TurnResultEndTurn = {
+  type: TurnResultType.EndTurn;
+};
+
 export type TurnResult =
   | TurnResultMove2
   | TurnResultMove3
@@ -161,7 +166,8 @@ export type TurnResult =
   | TurnResultExplosion
   | TurnResultDestroyed
   | TurnResultVisible
-  | TurnResultShrink;
+  | TurnResultShrink
+  | TurnResultEndTurn;
 
 export class GameState {
   hexes: Map<string, Hex>;

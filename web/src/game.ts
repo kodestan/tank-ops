@@ -1,4 +1,4 @@
-import { GameConfig, GameState } from "./game-objects.js";
+import { GameConfig, GameResult, GameState } from "./game-objects.js";
 import { Vector } from "./vector.js";
 import { DisplayDriver } from "./display-driver.js";
 import { Grid } from "./grid.js";
@@ -9,68 +9,20 @@ import { WsDriver } from "./ws-driver.js";
 
 const WS_URL = "ws";
 
+function resultString(result: GameResult): string {
+  switch (result) {
+    case GameResult.Win:
+      return "you won!";
+    case GameResult.Draw:
+      return "draw";
+    case GameResult.Lose:
+      return "you lost...";
+  }
+}
+
 function elementToScreenCoords(elementP: Vector): Vector {
   return elementP.mul(window.devicePixelRatio).round();
 }
-
-// export const BASE_CONFIG: GameConfig = {
-//   hexes: [
-//     { p: new Vector(0, 0), variant: 0 },
-//     { p: new Vector(1, 0), variant: 1 },
-//     { p: new Vector(2, 0), variant: 2 },
-//     { p: new Vector(2, 1), variant: 1 },
-//     { p: new Vector(3, 1), variant: 2 },
-//     { p: new Vector(4, 1), variant: 0 },
-//     { p: new Vector(0, 2), variant: 1 },
-//     { p: new Vector(1, 2), variant: 1 },
-//     { p: new Vector(2, 2), variant: 1 },
-//     { p: new Vector(3, 2), variant: 1 },
-//     { p: new Vector(-1, 3), variant: 1 },
-//     { p: new Vector(0, 3), variant: 1 },
-//     // { p: new Vector(1, 3), variant: 1 },
-//     { p: new Vector(2, 3), variant: 1 },
-//     { p: new Vector(3, 3), variant: 1 },
-//     { p: new Vector(-2, 4), variant: 1 },
-//     { p: new Vector(-1, 4), variant: 1 },
-//     { p: new Vector(0, 4), variant: 1 },
-//     { p: new Vector(1, 4), variant: 1 },
-//     // { p: new Vector(2, 4), variant: 1 },
-//     // { p: new Vector(3, 4), variant: 1 },
-//     // { p: new Vector(4, 4), variant: 1 },
-//     // { p: new Vector(5, 4), variant: 1 },
-//     { p: new Vector(-2, 5), variant: 1 },
-//     { p: new Vector(-1, 5), variant: 1 },
-//     // { p: new Vector(0, 5), variant: 1 },
-//     // { p: new Vector(1, 5), variant: 1 },
-//     // { p: new Vector(2, 5), variant: 1 },
-//     { p: new Vector(-3, 6), variant: 1 },
-//     { p: new Vector(-2, 6), variant: 1 },
-//     // { p: new Vector(-1, 6), variant: 1 },
-//     // { p: new Vector(0, 6), variant: 1 },
-//     // { p: new Vector(1, 6), variant: 1 },
-//     { p: new Vector(-3, 7), variant: 1 },
-//     { p: new Vector(-2, 7), variant: 1 },
-//     { p: new Vector(-1, 7), variant: 1 },
-//     { p: new Vector(-3, 8), variant: 1 },
-//     { p: new Vector(-2, 8), variant: 1 },
-//     { p: new Vector(-3, 9), variant: 1 },
-//   ],
-//
-//   playerTanks: [
-//     { id: 2, p: new Vector(-3, 8) },
-//     { id: 3, p: new Vector(0, 0) },
-//     { id: 4, p: new Vector(2, 0) },
-//   ],
-//
-//   enemyTanks: [{ id: 8, p: new Vector(-2, 6) }],
-//
-//   sites: [
-//     { p: new Vector(2, 2), variant: 2 },
-//     { p: new Vector(4, 1), variant: 4 },
-//     { p: new Vector(-2, 8), variant: 5 },
-//     { p: new Vector(-3, 7), variant: 6 },
-//   ],
-// };
 
 enum Layer {
   UI,
@@ -122,56 +74,11 @@ export class Game {
   public update(event: GameEvent) {
     console.log(event, this.state.str);
     this.state.update(event);
-    // switch (event.type) {
-    //   case GameEventType.StartGame:
-    //     this.initGrid(event.config);
-    //     this.ui.enableMode(UIMode.InGame);
-    //     break;
-    //   case GameEventType.ButtonJoinRoom:
-    //     const code = this.ui.getRoomCode();
-    //     this.wsDriver.sendStartGame(code);
-    //     break;
-    //   case GameEventType.ButtonZoomIn:
-    //     this.handleZoomIn();
-    //     break;
-    //   case GameEventType.ButtonZoomOut:
-    //     this.handleZoomOut();
-    //     break;
-    //   case GameEventType.ButtonSendTurn:
-    //     if (this.grid === null) return;
-    //     const actions = this.grid.getActions();
-    //     this.wsDriver.sendActions(actions);
-    //     break;
-    //   case GameEventType.ButtonQuitGame:
-    //     this.removeGrid();
-    //     this.ui.enableMode(UIMode.Main);
-    //     break;
-    //   case GameEventType.WsOpen:
-    //     this.ui.setOnlineGameAvailability(true);
-    //     break;
-    //   case GameEventType.WsClose:
-    //     this.ui.setOnlineGameAvailability(false);
-    //     break;
-    //   case GameEventType.ReceiveTurnResults:
-    //     this.grid?.pushResults(event.turnResults);
-    //     break;
-    //   case GameEventType.GameFinished:
-    //     console.log("game finished");
-    //     break;
-    //   case GameEventType.RoomJoined:
-    //     console.log("room joined");
-    //     break;
-    //   case GameEventType.RoomDisconnected:
-    //     console.log("room disconnected");
-    //     break;
-    //   case GameEventType.NoneEvent:
-    //     console.log("none event");
-    //     break;
-    // }
   }
 
   public setState(state: StateGame) {
     this.state = state;
+    this.state.onEnter();
   }
 
   public run() {
@@ -210,7 +117,7 @@ export class Game {
 
   public initGrid(config: GameConfig) {
     const gameState = new GameState(config);
-    this.grid = new Grid(gameState, this.displayDriver, config);
+    this.grid = new Grid(gameState, this.displayDriver, config, this.notifier);
     this.displayDriver.gameState = gameState;
     this.displayDriver.reset();
   }
@@ -274,8 +181,7 @@ export class Game {
 interface StateGame {
   str: string;
   update(event: GameEvent): void;
-  // onEnter(): void;
-  // onExit(): void;
+  onEnter(): void;
 }
 
 class GameStateMainMenu implements StateGame {
@@ -285,10 +191,7 @@ class GameStateMainMenu implements StateGame {
     this.game = game;
   }
 
-  // onEnter() {
-  //   this.game.removeGrid()
-  //   this.game.ui.enableMode(UIMode.Main)
-  // }
+  onEnter(): void {}
 
   update(event: GameEvent) {
     switch (event.type) {
@@ -317,6 +220,8 @@ class GameStateWaitForRoom implements StateGame {
     this.game = game;
   }
 
+  onEnter(): void {}
+
   update(event: GameEvent): void {
     switch (event.type) {
       case GameEventType.WsOpen:
@@ -329,7 +234,8 @@ class GameStateWaitForRoom implements StateGame {
         this.game.setState(this.game.states.mainMenu);
         break;
       case GameEventType.RoomJoined:
-        // TODO waitroom buttons
+        this.game.freeze = false;
+        this.game.ui.enableMode(UIMode.WaitingRoom);
         this.game.setState(this.game.states.waitingRoom);
         break;
       case GameEventType.RoomDisconnected:
@@ -347,56 +253,99 @@ class GameStateWaitingRoom implements StateGame {
     this.game = game;
   }
 
+  onEnter(): void {}
+
   update(event: GameEvent): void {
     switch (event.type) {
       case GameEventType.WsOpen:
         this.game.ui.setOnlineGameAvailability(true);
         break;
       case GameEventType.WsClose:
-        this.game.freeze = false;
         this.game.ui.setOnlineGameAvailability(false);
         this.game.ui.addModal("connection lost");
-        this.game.setState(this.game.states.inGame);
+        this.game.ui.enableMode(UIMode.Main);
+        this.game.setState(this.game.states.mainMenu);
         break;
       case GameEventType.StartGame:
-        this.game.freeze = false;
         this.game.initGrid(event.config);
         this.game.ui.enableMode(UIMode.InGame);
         this.game.setState(this.game.states.inGame);
         break;
       case GameEventType.RoomDisconnected:
-        this.game.freeze = false;
         this.game.ui.addModal("room disconnected");
+        this.game.ui.enableMode(UIMode.Main);
         this.game.setState(this.game.states.mainMenu);
         this.game.freeze;
+        break;
+      case GameEventType.ButtonQuitGame:
+        this.game.wsDriver.sendQuitRoom();
+        this.game.ui.enableMode(UIMode.Main);
+        this.game.setState(this.game.states.mainMenu);
         break;
     }
   }
 }
 class GameStateInGame implements StateGame {
-  str = "in-game";
   game: Game;
+  isAnimating: boolean = false;
+
+  str = "in-game";
+  modalQueue: string[] = [];
+  gameFinished: boolean = false;
+  counterIncoming: number = 0;
+  counterFinished: number = 0;
+
   constructor(game: Game) {
     this.game = game;
+  }
+
+  onEnter() {
+    this.isAnimating = false;
+    this.modalQueue = [];
+    this.gameFinished = false;
+    this.counterIncoming = 0;
+    this.counterFinished = 0;
+
+    this.game.ui.setSendTurnAvailability(true);
   }
 
   update(event: GameEvent): void {
     switch (event.type) {
       case GameEventType.ReceiveTurnResults:
+        this.counterIncoming++;
         this.game.grid?.pushResults(event.turnResults);
+        this.game.ui.setSendTurnAvailability(false);
+        this.isAnimating = true;
         break;
       case GameEventType.GameFinished:
-        this.game.ui.addModal(`result: ${event.result}`);
+        this.gameFinished = true;
+        this.game.ui.setSendTurnAvailability(false);
+        if (this.isAnimating) {
+          this.modalQueue.push(resultString(event.result));
+          return;
+        }
+        this.game.ui.addModal(resultString(event.result));
         break;
       case GameEventType.WsClose:
+        this.game.ui.setSendTurnAvailability(false);
         this.game.ui.setOnlineGameAvailability(false);
         this.game.ui.addModal("server disconnected");
         this.game.removeGrid();
+        this.game.ui.enableMode(UIMode.Main);
         this.game.setState(this.game.states.mainMenu);
         break;
       case GameEventType.RoomDisconnected:
+        this.game.ui.setSendTurnAvailability(false);
+        if (this.gameFinished) {
+          return;
+        }
+        if (this.isAnimating) {
+          this.modalQueue.push("room disconnected");
+          return;
+        }
         this.game.ui.addModal("room disconnected");
         this.game.removeGrid();
+        this.game.ui.enableMode(UIMode.Main);
         this.game.setState(this.game.states.mainMenu);
         break;
       case GameEventType.ButtonZoomIn:
@@ -406,15 +355,34 @@ class GameStateInGame implements StateGame {
         this.game.handleZoomOut();
         break;
       case GameEventType.ButtonQuitGame:
-        this.game.wsDriver.sendQuitRoom();
+        if (!this.gameFinished) {
+          this.game.wsDriver.sendQuitRoom();
+        }
         this.game.removeGrid();
         this.game.ui.enableMode(UIMode.Main);
+        this.game.setState(this.game.states.mainMenu);
         break;
       case GameEventType.ButtonSendTurn:
         if (this.game.grid === null) return;
+        this.game.ui.setSendTurnAvailability(false);
         const actions = this.game.grid.getActions();
         this.game.wsDriver.sendActions(actions);
         break;
+      case GameEventType.AnimationEnd:
+        this.counterFinished++;
+        if (this.counterFinished === this.counterIncoming) {
+          this.isAnimating = false;
+          this.game.ui.setSendTurnAvailability(!this.gameFinished);
+          for (const modalText of this.modalQueue) {
+            this.game.ui.addModal(modalText);
+          }
+        }
+        break;
+      case GameEventType.TankManipulation:
+        console.log(this.gameFinished, this.isAnimating);
+        if (!this.gameFinished && !this.isAnimating) {
+          this.game.ui.setSendTurnAvailability(true);
+        }
     }
   }
 }

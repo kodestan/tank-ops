@@ -17,6 +17,8 @@ export enum GameEventType {
   ButtonJoinRoom,
   ButtonSendTurn,
   ButtonQuitGame,
+  AnimationEnd,
+  TankManipulation,
 }
 
 export type TypeOnlyEvent =
@@ -30,6 +32,8 @@ export type TypeOnlyEvent =
   | GameEventType.WsClose
   | GameEventType.RoomJoined
   | GameEventType.RoomDisconnected
+  | GameEventType.AnimationEnd
+  | GameEventType.TankManipulation;
 
 export type GameEvent =
   | {

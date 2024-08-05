@@ -274,7 +274,7 @@ func (gs *GameState) Result() (GameResult, GameResult, bool) {
 	if hasTanksP1 && !hasTanksP2 {
 		return Win, Lose, true
 	}
-	return Lose, Draw, true
+	return Lose, Win, true
 }
 
 func (gs *GameState) ResolveActions(p1, p2 []TankAction) ([]TurnResult, []TurnResult) {

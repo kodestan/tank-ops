@@ -200,13 +200,13 @@ export class DisplayDriver {
 
     for (const button of this.ui.curButtons) {
       if (button.state === ButtonState.Invisible) continue;
-      this.ctx.globalAlpha = 0.6;
+      this.ctx.globalAlpha = 0.8;
       this.ctx.fillStyle = "white";
       if (button.state === ButtonState.Pressed) {
-        this.ctx.fillStyle = "red";
+        this.ctx.fillStyle = "#444444";
       }
       if (button.state === ButtonState.Inactive) {
-        this.ctx.fillStyle = "blue";
+        this.ctx.fillStyle = "white";
       }
 
       this.ctx.fillRect(
@@ -221,8 +221,18 @@ export class DisplayDriver {
       this.ctx.font = `bold ${fontSize}px monospace`;
       this.ctx.textAlign = "center";
       this.ctx.textBaseline = "middle";
-      this.ctx.globalAlpha = 1;
       this.ctx.fillStyle = "black";
+      if (button.state === ButtonState.Inactive) {
+        this.ctx.fillStyle = "#444444";
+        this.ctx.fillRect(
+          button.area.start.x + 2,
+          button.area.start.y + 2,
+          button.area.size.x - 4,
+          button.area.size.y - 4,
+        );
+        this.ctx.fillStyle = "white";
+      }
+      this.ctx.globalAlpha = 1;
       const center = button.area.start.add(button.area.size.mul(0.5)).round();
       this.ctx.fillText(button.text || "", center.x, center.y);
     }
