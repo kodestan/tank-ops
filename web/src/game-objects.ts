@@ -1,4 +1,4 @@
-import { SMOKE_MARK_IDX } from "./display-driver.js";
+import { SHRINK_MARK_IDX, SMOKE_MARK_IDX } from "./display-driver.js";
 import { Vector } from "./vector.js";
 
 export function getTankById(tanks: Tank[], id: number): Tank | null {
@@ -8,6 +8,12 @@ export function getTankById(tanks: Tank[], id: number): Tank | null {
     }
   }
   return null;
+}
+
+export enum GameResult {
+  Win = 1,
+  Draw = 2,
+  Lose = 3,
 }
 
 enum TankActionType {
@@ -44,12 +50,15 @@ export type GameConfig = {
   sites: { p: Vector; variant: number }[];
   driveRange: number;
   visibilityRange: number;
+  fireRange: number;
+  center: Vector;
 };
 
 export type Hex = {
   p: Vector;
   variant: number;
   traversable: boolean;
+  opacity: number;
 };
 
 export type Explosion = {
@@ -83,6 +92,10 @@ export function newSmokeMark(p: Vector): Overlay {
   return { p: p, variant: SMOKE_MARK_IDX };
 }
 
+export function newShrinkMark(p: Vector): Overlay {
+  return { p: p, variant: SHRINK_MARK_IDX };
+}
+
 export enum TurnResultType {
   Move2 = 1,
   Move3 = 2,
@@ -90,6 +103,8 @@ export enum TurnResultType {
   Explosion = 4,
   Destroyed = 5,
   Visible = 6,
+  Shrink = 7,
+  EndTurn = 1 << 8,
 }
 
 export type TurnResultMove2 = {
@@ -134,13 +149,25 @@ export type TurnResultVisible = {
   visible: boolean;
 };
 
+export type TurnResultShrink = {
+  type: TurnResultType.Shrink;
+  r: number;
+  started: boolean;
+};
+
+export type TurnResultEndTurn = {
+  type: TurnResultType.EndTurn;
+};
+
 export type TurnResult =
   | TurnResultMove2
   | TurnResultMove3
   | TurnResultFire
   | TurnResultExplosion
   | TurnResultDestroyed
-  | TurnResultVisible;
+  | TurnResultVisible
+  | TurnResultShrink
+  | TurnResultEndTurn;
 
 export class GameState {
   hexes: Map<string, Hex>;
@@ -159,7 +186,7 @@ export class GameState {
     this.hexes = new Map(
       config.hexes.map((h) => [
         h.p.toString(),
-        { p: h.p, variant: h.variant, traversable: true },
+        { p: h.p, variant: h.variant, traversable: true, opacity: 1 },
       ]),
     );
     this.sites = config.sites.map((s) => ({ p: s.p, variant: s.variant }));

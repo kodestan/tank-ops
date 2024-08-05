@@ -292,6 +292,12 @@ func (ps PlayerStateInRoom) handleRoomMessage(rm RoomMessage, ok bool) bool {
 		ps.player.done = nil
 		ps.player.room.read = nil
 		ps.player.room.send = nil
+
+		err := ps.player.Write(newRoomDisconnectedMessage())
+		if err != nil {
+			ps.player.conn.Close()
+			return true
+		}
 		ps.player.setState(ps.player.notInRoom)
 		return false
 	}
@@ -306,7 +312,7 @@ func (ps PlayerStateInRoom) handleRoomMessage(rm RoomMessage, ok bool) bool {
 	case RoomTurnResult:
 		err = ps.player.Write(newTurnResultsMessage(rm.turnResults))
 	case RoomGameFinished:
-		err = ps.player.Write(newGameFinishedMessage())
+		err = ps.player.Write(newGameFinishedMessage(rm.gameResult))
 	}
 
 	if err != nil {

@@ -16,6 +16,7 @@ const GREEN_HIGHLIGHT_IDX = 0;
 const YELLOW_HIGHLIGHT_IDX = 1;
 const DEFAULT_PRESET_IDX = 1;
 export const SMOKE_MARK_IDX = 0;
+export const SHRINK_MARK_IDX = 1;
 
 export class DisplayDriver {
   backgroundColor: string = "rgb(50, 50, 50)";
@@ -49,7 +50,7 @@ export class DisplayDriver {
     this.sprites.src = SPRITES_IMAGE_SRC;
   }
 
-  public draw() {
+  public draw(freeze: boolean) {
     this.ctx.fillStyle = this.backgroundColor;
     this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
 
@@ -60,6 +61,16 @@ export class DisplayDriver {
     this.drawTanks();
     this.drawExplosions();
     this.drawUI();
+
+    if (freeze) {
+      this.ctx.save();
+      this.ctx.fillStyle = "black";
+      this.ctx.globalAlpha = 0.6;
+      const x = this.ctx.canvas.width;
+      const y = this.ctx.canvas.height;
+      this.ctx.fillRect(0, 0, x, y);
+      this.ctx.restore();
+    }
   }
 
   public resize() {
@@ -164,6 +175,9 @@ export class DisplayDriver {
   private drawOverlays() {
     if (this.gameState === null) return;
     for (const overlay of this.gameState?.overlays) {
+      if (!this.gameState.hexes.has(overlay.p.toString())) {
+        continue;
+      }
       const isLight = this.gameState.visibleHexes.has(overlay.p.toString());
       const sprite = this.getOverlaySprite(overlay.variant, isLight);
       this.drawSprite(sprite, overlay.p);
@@ -182,16 +196,17 @@ export class DisplayDriver {
     //     panel.area.size.y,
     //   );
     // }
+    // this.ctx.restore();
 
     for (const button of this.ui.curButtons) {
       if (button.state === ButtonState.Invisible) continue;
-      this.ctx.globalAlpha = 0.6;
+      this.ctx.globalAlpha = 0.8;
       this.ctx.fillStyle = "white";
       if (button.state === ButtonState.Pressed) {
-        this.ctx.fillStyle = "red";
+        this.ctx.fillStyle = "#444444";
       }
       if (button.state === ButtonState.Inactive) {
-        this.ctx.fillStyle = "blue";
+        this.ctx.fillStyle = "white";
       }
 
       this.ctx.fillRect(
@@ -206,10 +221,46 @@ export class DisplayDriver {
       this.ctx.font = `bold ${fontSize}px monospace`;
       this.ctx.textAlign = "center";
       this.ctx.textBaseline = "middle";
-      this.ctx.globalAlpha = 1;
       this.ctx.fillStyle = "black";
+      if (button.state === ButtonState.Inactive) {
+        this.ctx.fillStyle = "#444444";
+        this.ctx.fillRect(
+          button.area.start.x + 2,
+          button.area.start.y + 2,
+          button.area.size.x - 4,
+          button.area.size.y - 4,
+        );
+        this.ctx.fillStyle = "white";
+      }
+      this.ctx.globalAlpha = 1;
       const center = button.area.start.add(button.area.size.mul(0.5)).round();
       this.ctx.fillText(button.text || "", center.x, center.y);
+    }
+
+    const modal = this.ui.getModal();
+    if (modal !== null) {
+      const area = modal.area;
+      this.ctx.globalAlpha = 0.6;
+      this.ctx.fillStyle = "white";
+      this.ctx.fillRect(area.start.x, area.start.y, area.size.x, area.size.y);
+      this.ctx.font = `bold ${modal.baseFontSize}px monospace`;
+      this.ctx.textAlign = "center";
+      this.ctx.textBaseline = "middle";
+      this.ctx.globalAlpha = 1;
+      this.ctx.fillStyle = "black";
+      const center = area.start.add(area.size.mul(0.5)).round();
+      this.ctx.fillText(modal.text || "", center.x, center.y);
+
+      this.ctx.lineWidth = modal.crossStrokeWidth;
+      this.ctx.beginPath();
+      const start = modal.crossArea.start;
+      const end = start.add(modal.crossArea.size);
+      this.ctx.moveTo(start.x, start.y);
+      this.ctx.lineTo(end.x, end.y);
+      this.ctx.moveTo(start.x, end.y);
+      this.ctx.lineTo(end.x, start.y);
+      this.ctx.closePath();
+      this.ctx.stroke();
     }
 
     this.ctx.restore();
@@ -304,11 +355,16 @@ export class DisplayDriver {
 
   private drawHexes() {
     if (this.gameState === null) return;
+
+    this.ctx.save();
+
     for (const hex of this.gameState.hexes.values()) {
       const sprite = this.getHexSprite(
         hex.variant,
         this.gameState.visibleHexes.has(hex.p.toString()),
       );
+
+      this.ctx.globalAlpha = hex.opacity;
       this.drawSprite(sprite, hex.p);
       if (this.gameState.conditionallyAvailableHexes.has(hex.p.toString())) {
         const sprite = this.getHighlightSprite(YELLOW_HIGHLIGHT_IDX);
@@ -319,11 +375,16 @@ export class DisplayDriver {
         this.drawSprite(sprite, hex.p);
       }
     }
+
+    this.ctx.restore();
   }
 
   private drawSites() {
     if (this.gameState === null) return;
     for (const site of this.gameState.sites) {
+      if (!this.gameState.hexes.has(site.p.toString())) {
+        continue;
+      }
       const sprite = this.getSiteSprite(
         site.variant,
         this.gameState.visibleHexes.has(site.p.toString()),

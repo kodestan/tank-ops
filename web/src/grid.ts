@@ -1,8 +1,10 @@
 import { DisplayDriver } from "./display-driver.js";
+import { GameEventType } from "./game-event.js";
 import {
   GameConfig,
   GameState,
   getTankById,
+  newShrinkMark,
   newSmokeMark,
   newTankFire,
   newTankMove,
@@ -14,9 +16,11 @@ import {
   TurnResultFire,
   TurnResultMove2,
   TurnResultMove3,
+  TurnResultShrink,
   TurnResultType,
   TurnResultVisible,
 } from "./game-objects.js";
+import { Notifier } from "./notifier.js";
 import {
   idxToUnitVector,
   includesVector,
@@ -33,6 +37,7 @@ const FIRING_DURATION = 200;
 const FIRING_PAUSE = 150;
 const EXPLOSION_DURATION = 400;
 const EXPLOSION_PAUSE_DURATION = 250;
+const SHRINK_DURATION = 400;
 
 // const TANK_ROTATION_SPEED = 100;
 // const TANK_MAX_SPEED = 1.2;
@@ -52,9 +57,11 @@ enum PointerMode {
 export class Grid {
   gameState: GameState;
   displayDriver: DisplayDriver;
+  notifier: Notifier;
   config: {
     driveRange: number;
     visibilityRange: number;
+    center: Vector;
   };
   lastPoint: Vector = Vector.zero();
   curT = 0;
@@ -74,15 +81,18 @@ export class Grid {
     gameState: GameState,
     displayDriver: DisplayDriver,
     config: GameConfig,
+    notifier: Notifier,
   ) {
     this.gameState = gameState;
     this.displayDriver = displayDriver;
     this.config = {
       driveRange: config.driveRange,
       visibilityRange: config.visibilityRange,
+      center: config.center,
     };
     this.recalculateVisibleHexes();
     this.animationResolver = new ResolverIdle(this);
+    this.notifier = notifier;
   }
 
   public transition() {
@@ -103,9 +113,9 @@ export class Grid {
 
   private getAnimationResolver(): Resolver {
     if (this.curResult === null) {
-      if (this.prevResult === null) {
-        return new ResolverIdle(this);
-      }
+      return new ResolverIdle(this);
+    }
+    if (this.curResult.type === TurnResultType.EndTurn) {
       return new ResolverFinish(this);
     }
     if (this.curResult.type === TurnResultType.Move2) {
@@ -130,6 +140,9 @@ export class Grid {
         return new ResolverExplosion(this, this.curResult, tank);
       }
       return new ResolverExplosion(this, this.curResult);
+    }
+    if (this.curResult.type === TurnResultType.Shrink) {
+      return new ResolverShrink(this, this.curResult);
     }
 
     return new ResolverRest(this);
@@ -162,6 +175,7 @@ export class Grid {
 
     const tank = this.getCollidingTank(p);
     if (tank !== null) {
+      this.notifier.notify({ type: GameEventType.TankManipulation });
       this.curMode = PointerMode.TankNavigation;
       tank.path = [];
       tank.shooting = false;
@@ -238,6 +252,7 @@ export class Grid {
   public handleEndAnimation() {
     this.handlePointerEnd(Vector.zero());
     this.curMode = PointerMode.None;
+    this.notifier.notify({ type: GameEventType.AnimationEnd });
   }
 
   public setT(t: number) {
@@ -270,6 +285,7 @@ export class Grid {
     } else {
       this.turnResults.push(...turnResults);
     }
+    this.turnResults.push({ type: TurnResultType.EndTurn });
   }
 
   private handleEndTankNavigationFire() {
@@ -546,6 +562,9 @@ class ResolverMove2 implements Resolver {
     this.endAngle = unitVectorToIdx(result.p2.sub(result.p1)) * 60;
     this.dAngle = normalize180(this.endAngle - this.startAngle);
     this.tRotation = (Math.abs(this.dAngle) / TANK_ROTATION_SPEED) * 1000;
+    if (!this.result.start) {
+      this.tRotation = 0;
+    }
 
     this.startT = this.grid.curT;
     this.startF = this.result.p1;
@@ -891,6 +910,58 @@ class ResolverExplosion implements Resolver {
   }
 }
 
+class ResolverShrink {
+  grid: Grid;
+  result: TurnResultShrink;
+  startT: number;
+  duration = SHRINK_DURATION;
+  center: Vector;
+
+  constructor(grid: Grid, result: TurnResultShrink) {
+    this.grid = grid;
+    this.result = result;
+    this.startT = this.result.started ? this.grid.curT : 0;
+    this.center = this.grid.config.center;
+  }
+
+  animate() {
+    if (!this.result.started) {
+      this.markShrinkingNext();
+      this.grid.transition();
+      return;
+    }
+    const frac = (this.grid.curT - this.startT) / this.duration;
+    if (frac < 0) return;
+    if (frac >= 1) {
+      for (const [key, hex] of this.grid.gameState.hexes.entries()) {
+        if (hex.p.gridDistance(this.center) >= this.result.r) {
+          this.grid.gameState.hexes.delete(key);
+        }
+      }
+      this.grid.transition();
+      return;
+    }
+    this.animateShrinking(frac);
+  }
+
+  markShrinkingNext() {
+    for (const hex of this.grid.gameState.hexes.values()) {
+      if (hex.p.gridDistance(this.center) == this.result.r) {
+        this.grid.gameState.overlays.push(newShrinkMark(hex.p));
+      }
+    }
+  }
+
+  animateShrinking(frac: number) {
+    const opacity = 1 - frac;
+    for (const hex of this.grid.gameState.hexes.values()) {
+      if (hex.p.gridDistance(this.center) >= this.result.r) {
+        hex.opacity = opacity;
+      }
+    }
+  }
+}
+
 class ResolverRest implements Resolver {
   grid: Grid;
   turnResult: TurnResult;
@@ -907,6 +978,17 @@ class ResolverRest implements Resolver {
         break;
       case TurnResultType.Destroyed:
         this.resolveDestroyed(this.turnResult);
+        break;
+      case TurnResultType.Shrink:
+        if (this.turnResult.started) {
+          for (const [key, hex] of this.grid.gameState.hexes.entries()) {
+            if (
+              hex.p.gridDistance(this.grid.config.center) >= this.turnResult.r
+            ) {
+              this.grid.gameState.hexes.delete(key);
+            }
+          }
+        }
         break;
     }
     this.grid.recalculateVisibleHexes();

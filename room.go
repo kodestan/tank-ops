@@ -15,6 +15,7 @@ type RoomMessage struct {
 	msgType     RoomMessageType
 	config      ClientConfig
 	turnResults []TurnResult
+	gameResult  GameResult
 }
 
 type QueuedActions struct {
@@ -182,8 +183,14 @@ func (s RoomStateRunning) handleJoinRequest(req RoomRequest, ok bool) bool {
 func (s RoomStateRunning) handlePlayerMessage(msg PlayerMessage, isP1 bool) {
 	switch msg.msgType {
 	case PlayerQuitRoom:
-		s.r.player1chans.read <- RoomMessage{msgType: RoomGameFinished}
-		s.r.player2chans.read <- RoomMessage{msgType: RoomGameFinished}
+		res1, res2 := Win, Win
+		if isP1 {
+			res1 = Lose
+		} else {
+			res2 = Lose
+		}
+		s.r.player1chans.read <- RoomMessage{msgType: RoomGameFinished, gameResult: res1}
+		s.r.player2chans.read <- RoomMessage{msgType: RoomGameFinished, gameResult: res2}
 		close(s.r.player1chans.read)
 		close(s.r.player2chans.read)
 		s.r.player1chans.send = nil
@@ -212,6 +219,32 @@ func (s RoomStateRunning) handlePlayerMessage(msg PlayerMessage, isP1 bool) {
 				msgType:     RoomTurnResult,
 				turnResults: results2,
 			}
+
+			gameResultP1, gameResultP2, ok := s.r.gamestate.Result()
+			if !ok {
+				return
+			}
+
+			s.r.player1chans.read <- RoomMessage{
+				msgType:    RoomGameFinished,
+				gameResult: gameResultP1,
+			}
+			s.r.player2chans.read <- RoomMessage{
+				msgType:    RoomGameFinished,
+				gameResult: gameResultP2,
+			}
+
+			close(s.r.player1chans.read)
+			close(s.r.player2chans.read)
+			s.r.player1chans.send = nil
+			s.r.player2chans.send = nil
+
+			ch := s.r.close
+			go func(ch chan string) {
+				ch <- s.r.code
+			}(ch)
+
+			s.r.setState(s.r.closing)
 		}
 	}
 }

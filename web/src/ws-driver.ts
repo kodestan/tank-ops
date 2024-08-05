@@ -1,5 +1,10 @@
 import { GameEventType } from "./game-event.js";
-import { GameConfig, TankAction, TurnResult } from "./game-objects.js";
+import {
+  GameConfig,
+  GameResult,
+  TankAction,
+  TurnResult,
+} from "./game-objects.js";
 import { Notifier } from "./notifier.js";
 import { Vector } from "./vector.js";
 
@@ -10,37 +15,69 @@ function vectorReviver(key: string, value: any) {
   return value;
 }
 
+// ServerStartGame        ServerMessageType = 1
+// Type   ServerMessageType `json:"type"`
+// Config ClientConfig      `json:"config"`
+// ServerTurnResults      ServerMessageType = 2
+// Type        ServerMessageType `json:"type"`
+// TurnResults []TurnResult      `json:"turnResults"`
+// ServerRoomJoined       ServerMessageType = 3
+// Type ServerMessageType `json:"type"`
+// ServerRoomDisconnected ServerMessageType = 4
+// Type ServerMessageType `json:"type"`
+// ServerGameFinished     ServerMessageType = 5
+// Type   ServerMessageType `json:"type"`
+// Result GameResult        `json:"result"`
+
 enum ServerMessageType {
-  JoinRoom = 1,
+  StartGame = 1,
   TurnResults = 2,
+  RoomJoined = 3,
+  RoomDisconnected = 4,
+  GameFinished = 5,
 }
 
 type ServerMessage =
   | {
-      type: ServerMessageType.JoinRoom;
+      type: ServerMessageType.StartGame;
       config: GameConfig;
     }
   | {
       type: ServerMessageType.TurnResults;
       turnResults: TurnResult[];
+    }
+  | {
+      type: ServerMessageType.RoomJoined;
+    }
+  | {
+      type: ServerMessageType.RoomDisconnected;
+    }
+  | {
+      type: ServerMessageType.GameFinished;
+      result: GameResult;
     };
 
 enum ClientMessageType {
-  StartGame = 1,
+  JoinRoom = 1,
   SendTurn = 2,
+  QuitRoom = 3,
 }
 
 type ClientMessage =
   | {
-      type: ClientMessageType.StartGame;
+      type: ClientMessageType.JoinRoom;
       roomCode: string;
     }
   | {
       type: ClientMessageType.SendTurn;
       actions: TankAction[];
+    }
+  | {
+      type: ClientMessageType.QuitRoom;
     };
 
 export class WsDriver {
+  open: boolean = false;
   conn: WebSocket;
   notifier: Notifier;
 
@@ -52,12 +89,19 @@ export class WsDriver {
     this.conn.onmessage = (e) => this.handleMessage(e);
   }
 
+  private send(msg: ClientMessage) {
+    if (!this.open) {
+      return;
+    }
+    this.conn.send(JSON.stringify(msg));
+  }
+
   public sendStartGame(code: string) {
     const msg: ClientMessage = {
-      type: ClientMessageType.StartGame,
+      type: ClientMessageType.JoinRoom,
       roomCode: code,
     };
-    this.conn.send(JSON.stringify(msg));
+    this.send(msg);
   }
 
   public sendActions(actions: TankAction[]) {
@@ -65,21 +109,30 @@ export class WsDriver {
       type: ClientMessageType.SendTurn,
       actions: actions,
     };
-    this.conn.send(JSON.stringify(msg));
+    this.send(msg);
+  }
+
+  public sendQuitRoom() {
+    const msg: ClientMessage = {
+      type: ClientMessageType.QuitRoom,
+    };
+    this.send(msg);
   }
 
   private handleOpen() {
+    this.open = true;
     this.notifier.notify({ type: GameEventType.WsOpen });
   }
 
   private handleClose() {
+    this.open = false;
     this.notifier.notify({ type: GameEventType.WsClose });
   }
 
   private handleMessage(e: MessageEvent) {
     const msg = JSON.parse(e.data, vectorReviver) as ServerMessage;
     switch (msg.type) {
-      case ServerMessageType.JoinRoom:
+      case ServerMessageType.StartGame:
         this.notifier.notify({
           type: GameEventType.StartGame,
           config: msg.config,
@@ -90,6 +143,23 @@ export class WsDriver {
           type: GameEventType.ReceiveTurnResults,
           turnResults: msg.turnResults,
         });
+        break;
+      case ServerMessageType.RoomJoined:
+        this.notifier.notify({
+          type: GameEventType.RoomJoined,
+        });
+        break;
+      case ServerMessageType.RoomDisconnected:
+        this.notifier.notify({
+          type: GameEventType.RoomDisconnected,
+        });
+        break;
+      case ServerMessageType.GameFinished:
+        this.notifier.notify({
+          type: GameEventType.GameFinished,
+          result: msg.result,
+        });
+        break;
     }
   }
 }
