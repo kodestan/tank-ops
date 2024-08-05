@@ -181,6 +181,7 @@ export class GameState {
   overlays: Overlay[] = [];
   explosion: Explosion = { frac: 0, p: Vector.zero() };
   firingExplosion: Explosion = { frac: 0, p: Vector.zero() };
+  cameraShake: Vector = Vector.zero();
 
   constructor(config: GameConfig) {
     this.hexes = new Map(

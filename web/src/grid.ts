@@ -87,6 +87,7 @@ export class Grid {
     notifier: Notifier,
     audioDriver: AudioDriver,
   ) {
+    getCameraShake(0.5);
     this.gameState = gameState;
     this.displayDriver = displayDriver;
     this.config = {
@@ -835,7 +836,9 @@ class ResolverFire implements Resolver {
 
   animateFiring(frac: number) {
     this.playFireSound();
+    this.grid.gameState.cameraShake = getCameraShake(frac).mul(0.04);
     if (frac >= 1) {
+      this.grid.gameState.cameraShake = Vector.zero();
       this.grid.gameState.firingExplosion.frac = 0;
       this.grid.transition();
       return;
@@ -924,12 +927,14 @@ class ResolverExplosion implements Resolver {
     fracExplosion = Math.max(fracExplosion, 0);
     this.animateExplosion(fracExplosion);
     if (frac >= 1) {
+      this.grid.gameState.cameraShake = Vector.zero();
       this.grid.recalculateVisibleHexes();
       this.grid.transition();
     }
   }
 
   animateExplosion(frac: number) {
+    this.grid.gameState.cameraShake = getCameraShake(frac).mul(0.1);
     this.grid.gameState.explosion.frac = frac;
     this.grid.gameState.explosion.p = this.p;
     if (this.tank !== undefined && !this.marked && frac >= this.markAfter) {
@@ -1042,4 +1047,26 @@ class ResolverRest implements Resolver {
     tank.pF = res.p;
     tank.visible = res.visible;
   }
+}
+
+function getCameraShake(frac: number) {
+  if (frac <= 0 || frac >= 1) {
+    return Vector.zero();
+  }
+
+  const mid = 0.25;
+
+  const x =
+    5.5 * Math.sin(20.8 * Math.PI * frac + 2.3) +
+    2.2 * Math.sin(5.6 * Math.PI * frac + 5) +
+    1.8 * Math.sin(11.2 * Math.PI * frac + 1);
+
+  const y =
+    4 * Math.sin(17.6 * Math.PI * frac - 2.5) +
+    2.8 * Math.sin(9.6 * Math.PI * frac + 4) +
+    1.6 * Math.sin(1.6 * Math.PI * frac + 0);
+
+  const lim = frac <= mid ? (1 / mid) * frac : 1 - (frac - mid) / (1 - mid);
+
+  return new Vector(x, y).mul(lim);
 }

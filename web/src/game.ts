@@ -76,7 +76,6 @@ export class Game {
   }
 
   public update(event: GameEvent) {
-    console.log(event, this.state.str);
     this.state.update(event);
   }
 
@@ -414,7 +413,6 @@ class GameStateInGame implements StateGame {
         }
         break;
       case GameEventType.TankManipulation:
-        console.log(this.gameFinished, this.isAnimating);
         if (!this.gameFinished && !this.isAnimating) {
           this.game.ui.setSendTurnAvailability(true);
         }

@@ -156,7 +156,13 @@ export class DisplayDriver {
   private drawSprite(sprite: Sprite, p: Vector) {
     const screenCords = this.gridToScreenCoords(p).round();
     const scale = this.curPreset.scale;
-    const start = screenCords.add(sprite.offset.mul(scale));
+    const shakeOffset = (this.gameState?.cameraShake || Vector.zero()).mul(
+      this.curPreset.sprites.hexSize.x * scale,
+    );
+    const start = screenCords
+      .add(sprite.offset.mul(scale))
+      .add(shakeOffset)
+      .floor();
     const size = sprite.size.mul(scale);
     this.ctx.imageSmoothingEnabled = false;
     this.ctx.drawImage(

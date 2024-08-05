@@ -519,10 +519,6 @@ export class UI {
   }
 
   public allowUnmute() {
-    console.log(
-      this.specialButtons.unmute.state === ButtonState.Invisible,
-      "dddwdw",
-    );
     if (this.specialButtons.unmute.state === ButtonState.Inactive) {
       this.specialButtons.unmute.state = ButtonState.Normal;
     }
