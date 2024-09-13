@@ -32,13 +32,6 @@ import {
 } from "./vector.js";
 
 const T_PRESS_TO_FIRE = 700;
-// const TANK_ROTATION_SPEED = 300;
-// const TANK_MAX_SPEED = 3;
-// const FIRING_DURATION = 200;
-// const FIRING_PAUSE = 150;
-// const EXPLOSION_DURATION = 400;
-// const EXPLOSION_PAUSE_DURATION = 250;
-// const SHRINK_DURATION = 400;
 
 const TANK_ROTATION_SPEED = 100;
 const TANK_MAX_SPEED = 1.2;

@@ -137,7 +137,6 @@ func (s RoomStateWaitingForP2) handleJoinRequest(req RoomRequest, ok bool) bool 
 	s.r.player2chans = req.chans
 	s.r.player2chans.read <- RoomMessage{msgType: RoomJoined}
 
-	// TEMPORARY
 	s.r.gamestate = NewGameState(NewBasicConfig(false, true))
 	cfg1, cfg2 := s.r.gamestate.ClientConfigs()
 
@@ -255,7 +254,6 @@ type RoomStateClosing struct {
 
 func (s RoomStateClosing) handleJoinRequest(req RoomRequest, ok bool) bool {
 	if !ok {
-		// safe close
 		return true
 
 	}

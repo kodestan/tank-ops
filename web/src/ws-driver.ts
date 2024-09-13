@@ -15,20 +15,6 @@ function vectorReviver(key: string, value: any) {
   return value;
 }
 
-// ServerStartGame        ServerMessageType = 1
-// Type   ServerMessageType `json:"type"`
-// Config ClientConfig      `json:"config"`
-// ServerTurnResults      ServerMessageType = 2
-// Type        ServerMessageType `json:"type"`
-// TurnResults []TurnResult      `json:"turnResults"`
-// ServerRoomJoined       ServerMessageType = 3
-// Type ServerMessageType `json:"type"`
-// ServerRoomDisconnected ServerMessageType = 4
-// Type ServerMessageType `json:"type"`
-// ServerGameFinished     ServerMessageType = 5
-// Type   ServerMessageType `json:"type"`
-// Result GameResult        `json:"result"`
-
 enum ServerMessageType {
   StartGame = 1,
   TurnResults = 2,

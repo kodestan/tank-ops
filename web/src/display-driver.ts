@@ -57,8 +57,8 @@ export class DisplayDriver {
     this.drawHexes();
     this.drawOverlays();
     this.drawPaths();
-    this.drawSites();
     this.drawTanks();
+    this.drawSites();
     this.drawExplosions();
     this.drawUI();
 
@@ -192,17 +192,6 @@ export class DisplayDriver {
 
   private drawUI() {
     this.ctx.save();
-    // for (const panel of this.ui.panels) {
-    //   this.ctx.globalAlpha = 0.4;
-    //   this.ctx.fillStyle = "red";
-    //   this.ctx.fillRect(
-    //     panel.area.start.x,
-    //     panel.area.start.y,
-    //     panel.area.size.x,
-    //     panel.area.size.y,
-    //   );
-    // }
-    // this.ctx.restore();
 
     for (const button of this.ui.curButtons) {
       if (button.state === ButtonState.Invisible) continue;

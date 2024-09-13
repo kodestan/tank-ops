@@ -89,6 +89,7 @@ func (p *Player) Write(msg ServerMessage) error {
 	err := p.conn.WriteJSON(msg)
 	if err != nil {
 		p.wsClosed = true
+		p.conn.Close()
 		return err
 	}
 	return nil
@@ -217,7 +218,6 @@ func (ps PlayerStateWaitingForRoom) handleRoomMessage(rm RoomMessage, ok bool) b
 		ps.player.setState(ps.player.inRoom)
 		err := ps.player.Write(newRoomJoinedMessage())
 		if err != nil {
-			ps.player.clientRead = nil
 			ch := ps.player.room.send
 			done := ps.player.done
 			go func(ch chan PlayerMessage, done chan struct{}) {
@@ -316,7 +316,6 @@ func (ps PlayerStateInRoom) handleRoomMessage(rm RoomMessage, ok bool) bool {
 	}
 
 	if err != nil {
-		ps.player.clientRead = nil
 		ch := ps.player.room.send
 		done := ps.player.done
 		go func(ch chan PlayerMessage, done chan struct{}) {
@@ -335,12 +334,23 @@ type PlayerStateWaitForClose struct {
 }
 
 func (ps PlayerStateWaitForClose) handleClientMessage(cm ClientMessage, ok bool) bool {
-	panic("shouldnt receive client message in WaitForClose")
+	if ok {
+		return false
+	}
+	ps.player.clientRead = nil
+	if ps.player.room.read == nil {
+		return true
+	}
+	return false
 }
 
 func (ps PlayerStateWaitForClose) handleRoomMessage(rm RoomMessage, ok bool) bool {
-	if !ok {
-		close(ps.player.done)
+	if ok {
+		return false
+	}
+	ps.player.room.read = nil
+	close(ps.player.done)
+	if ps.player.clientRead == nil {
 		return true
 	}
 	return false

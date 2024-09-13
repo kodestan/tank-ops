@@ -28,14 +28,6 @@ type Hex struct {
 	traversable bool
 }
 
-//	export enum TurnResultType {
-//	  Move2 = 1,
-//	  Move3 = 2,
-//	  Fire = 3,
-//	  Explosion = 4,
-//	  Destroyed = 5,
-//	  Visible = 6,
-//	}
 type GameResult int
 
 const (
@@ -60,13 +52,6 @@ const (
 	Shrink    TurnResultType = 7
 )
 
-//	type TurnResultMove2 = {
-//	  type: TurnResultType.Move2;
-//	  id: number;
-//	  p1: Vector;
-//	  p2: Vector;
-//	  start: boolean;
-//	};
 type TurnResultMove2 struct {
 	Type  TurnResultType `json:"type"`
 	Id    int            `json:"id"`
@@ -80,13 +65,6 @@ func newTurnResultMove2(id int, p1, p2 Vector, start bool) TurnResultMove2 {
 	return TurnResultMove2{Type: Move2, Id: id, P1: p1, P2: p2, Start: start}
 }
 
-//	type TurnResultMove3 = {
-//	  type: TurnResultType.Move3;
-//	  id: number;
-//	  p1: Vector;
-//	  p2: Vector;
-//	  p3: Vector;
-//	};
 type TurnResultMove3 struct {
 	Type TurnResultType `json:"type"`
 	Id   int            `json:"id"`
@@ -100,11 +78,6 @@ func newTurnResultMove3(id int, p1, p2, p3 Vector) TurnResultMove3 {
 	return TurnResultMove3{Type: Move3, Id: id, P1: p1, P2: p2, P3: p3}
 }
 
-//	export type TurnResultFire = {
-//	  type: TurnResultType.Fire;
-//	  id: number;
-//	  dir: Vector;
-//	};
 type TurnResultFire struct {
 	Type TurnResultType `json:"type"`
 	Id   int            `json:"id"`
@@ -116,12 +89,6 @@ func newTurnResultFire(id int, dir Vector) TurnResultFire {
 	return TurnResultFire{Type: Fire, Id: id, Dir: dir}
 }
 
-//	export type TurnResultExplosion = {
-//	  type: TurnResultType.Explosion;
-//	  p: Vector;
-//	  destroyed: boolean;
-//	  id: number;
-//	};
 type TurnResultExplosion struct {
 	Type      TurnResultType `json:"type"`
 	P         Vector         `json:"p"`
@@ -137,11 +104,6 @@ func newTurnResultDestroyingExplosion(p Vector, id int) TurnResultExplosion {
 	return TurnResultExplosion{Type: Explosion, P: p, Destroyed: true, Id: id}
 }
 
-//	export type TurnResultDestroyed = {
-//	  type: TurnResultType.Destroyed;
-//	  p: Vector;
-//	  id: number;
-//	};
 type TurnResultDestroyed struct {
 	Type TurnResultType `json:"type"`
 	P    Vector         `json:"p"`
@@ -153,11 +115,6 @@ func newTurnResultDestroyed(p Vector, id int) TurnResultDestroyed {
 	return TurnResultDestroyed{Type: Destroyed, P: p, Id: id}
 }
 
-//	export type TurnResultVisible = {
-//	  type: TurnResultType.Visible;
-//	  p: Vector;
-//	  id: number;
-//	};
 type TurnResultVisible struct {
 	Type    TurnResultType `json:"type"`
 	Id      int            `json:"id"`
@@ -170,11 +127,6 @@ func newTurnResultVisible(id int, p Vector, visible bool) TurnResultVisible {
 	return TurnResultVisible{Type: Visible, Id: id, P: p, Visible: visible}
 }
 
-//	export type TurnResultShrink = {
-//	  type: TurnResultType.Shrink;
-//	  r: number;
-//	  started: boolean;
-//	};
 type TurnResultShrink struct {
 	Type    TurnResultType `json:"type"`
 	R       int            `json:"r"`
@@ -321,17 +273,6 @@ func (gs *GameState) resolveShrinking() {
 		}
 		return
 	}
-	// fmt.Println(gs.turn)
-	// if shrinksNow {
-	// 	fmt.Println("shrinking now", gs.radius)
-	// }
-	// if shrinksNext {
-	// 	r := gs.radius
-	// 	if shrinksNow {
-	// 		r--
-	// 	}
-	// 	fmt.Println("shrinking next", r)
-	// }
 
 	for _, t := range gs.curEnemy {
 		if !t.destroyed && t.p.distance(gs.cfg.center) >= gs.radius {
@@ -478,27 +419,6 @@ func (gs *GameState) resolveSinglePlayer(actions []TankAction) {
 			gs.resolveTankFire(action.Dir, tank)
 		}
 	}
-	// func (gs *GameState) ResolveActions(actions []TankAction) []TurnResult {
-	// turnResults := make([]TurnResult, 0)
-	//
-	// for _, action := range actions {
-	// 	tank, ok := gs.playerTanks[action.Id]
-	// 	if !ok || tank.exercised || tank.destroyed {
-	// 		continue
-	// 	}
-	// 	tank.exercised = true
-	//
-	// 	switch action.Type {
-	// 	case TankMove:
-	// 	case TankFire:
-	// 	}
-	// }
-	//
-	// for _, tank := range gs.playerTanks {
-	// 	tank.exercised = false
-	// }
-	//
-	// return turnResults
 }
 
 func (gs *GameState) resetExercised() {

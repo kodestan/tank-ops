@@ -4,18 +4,6 @@ import { Notifier } from "./notifier.js";
 const AUDIO_PATH = "/assets/sounds.mp3";
 const AudioCtx =
   window.AudioContext || ((window as any).webkitAudioContext as AudioContext);
-// const audioCtx = new AudioCtx();
-//
-// async function getAudioBuffer() {
-//   const res = await fetch(AUDIO_PATH);
-//   const buffer = await res.arrayBuffer();
-//   const audioBuffer = await audioCtx.decodeAudioData(buffer);
-//   return audioBuffer;
-// }
-
-// const audioBuffer = getAudioBuffer();
-//
-//
 
 type ContinualSoundType = "driving" | "turret-rotation";
 type SoundEffectType = "tank-firing" | "explosion";

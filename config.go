@@ -1,12 +1,5 @@
 package main
 
-// export type GameConfig = {
-//   hexes: { p: Vector; variant: number }[];
-//   playerTanks: { id: number; p: Vector }[];
-//   enemyTanks: { id: number; p: Vector }[];
-//   sites: { p: Vector; variant: number }[];
-// };
-
 type TankConfig struct {
 	Id int    `json:"id"`
 	P  Vector `json:"p"`
@@ -72,13 +65,10 @@ func NewBasicConfig(swapPlayers, p1First bool) GameConfig {
 	tanksP1 := []TankConfig{
 		{1, Vector{0, 0}},
 		{2, Vector{2, -2}},
-		// {3, Vector{3, 0}},
-		{4, Vector{-2, -1}},
 	}
 	tanksP2 := []TankConfig{
-		// {8, Vector{2, 2}},
-		{9, Vector{0, 1}},
-		// {10, Vector{1, 1}},
+		{3, Vector{-2, -1}},
+		{4, Vector{0, 1}},
 	}
 	hexes := []SceneConfig{
 		{Vector{1, -2}, 2},
@@ -89,17 +79,12 @@ func NewBasicConfig(swapPlayers, p1First bool) GameConfig {
 		{Vector{-2, 0}, 0},
 		{Vector{0, 0}, 0},
 		{Vector{1, 0}, 1},
-		// {Vector{2, 0}, 2},
-		// {Vector{3, 0}, 0},
 		{Vector{-2, 1}, 0},
 		{Vector{-1, 1}, 0},
 		{Vector{0, 1}, 0},
 		{Vector{1, 1}, 1},
-		// {Vector{2, 1}, 2},
 		{Vector{-2, 2}, 0},
 		{Vector{-1, 2}, 0},
-		// {Vector{1, 2}, 2},
-		// {Vector{2, 2}, 1},
 	}
 	radius := 0
 	for _, h := range hexes {
@@ -112,7 +97,6 @@ func NewBasicConfig(swapPlayers, p1First bool) GameConfig {
 		hexes:   hexes,
 		sites: []SceneConfig{
 			{Vector{1, 0}, 8},
-			// {Vector{2, 1}, 6},
 			{Vector{-1, 2}, 6},
 		},
 		driveRange:      5,
