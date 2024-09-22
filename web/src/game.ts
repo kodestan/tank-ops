@@ -100,7 +100,8 @@ export class Game {
     });
     canvas.addEventListener("pointermove", (e: PointerEvent) => {
       const screenP = elementToScreenCoords(new Vector(e.offsetX, e.offsetY));
-      this.pointerPosition = screenP;
+      this.pointerPosition.x = screenP.x;
+      this.pointerPosition.y = screenP.y;
       this.handlePointerMove(screenP);
     });
     canvas.addEventListener("wheel", (e: WheelEvent) => {
