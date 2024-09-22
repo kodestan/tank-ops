@@ -6,7 +6,7 @@ import {
   Sprite,
   ValidPathsKeys,
 } from "./sprites.js";
-import { GameState, getTankById, Tank } from "./game-objects.js";
+import { GameState, getTankById } from "./game-objects.js";
 import { ButtonState, UI } from "./ui.js";
 
 type SpriteConfig = { scale: number; sprites: SpritePreset };
@@ -95,37 +95,31 @@ export class DisplayDriver {
     this.cameraOffset = Vector.zero();
   }
 
-  public handleZoomIn() {
-    this.zoom(true);
+  public handleZoomIn(pointerPosition: Vector) {
+    this.zoom(true, pointerPosition);
   }
 
-  public handleZoomOut() {
-    this.zoom(false);
+  public handleZoomOut(pointerPosition: Vector) {
+    this.zoom(false, pointerPosition);
   }
 
-  private zoom(zoomIn: boolean) {
+  private zoom(zoomIn: boolean, { x, y }: Vector) {
     if (zoomIn && this.presetIdx === this.spriteConfigs.length - 1) return;
     if (!zoomIn && this.presetIdx === 0) return;
-    if (zoomIn) {
-      this.presetIdx++;
-    } else {
-      this.presetIdx--;
-    }
+
     const oldHexWidth = this.curPreset.sprites.hexSize.x * this.curPreset.scale;
 
+    this.presetIdx += zoomIn ? 1 : -1;
     this.curPreset = this.spriteConfigs[this.presetIdx];
 
     const newHexWidth = this.curPreset.sprites.hexSize.x * this.curPreset.scale;
+    const zoomFactor = newHexWidth / oldHexWidth;
 
-    const center = new Vector(
-      this.ctx.canvas.width,
-      this.ctx.canvas.height,
-    ).mul(0.5);
+    const {left, top} = this.ctx.canvas.getBoundingClientRect();
+    const pointerPos = new Vector(x - left, y - top);
 
-    this.cameraOffset = this.cameraOffset
-      .sub(center)
-      .mul(newHexWidth / oldHexWidth)
-      .add(center);
+    this.cameraOffset = pointerPos
+      .add(this.cameraOffset.sub(pointerPos).mul(zoomFactor));
   }
 
   public addCameraOffset(v: Vector) {
