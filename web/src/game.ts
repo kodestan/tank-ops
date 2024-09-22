@@ -48,6 +48,7 @@ export class Game {
     inGame: StateGame;
   };
   state: StateGame;
+  pointerPosition: Vector = new Vector(0, 0);
 
   constructor(ctx: CanvasRenderingContext2D) {
     this.notifier = new Notifier(this);
@@ -99,6 +100,7 @@ export class Game {
     });
     canvas.addEventListener("pointermove", (e: PointerEvent) => {
       const screenP = elementToScreenCoords(new Vector(e.offsetX, e.offsetY));
+      this.pointerPosition = screenP;
       this.handlePointerMove(screenP);
     });
     canvas.addEventListener("wheel", (e: WheelEvent) => {
@@ -137,11 +139,11 @@ export class Game {
   }
 
   public handleZoomIn() {
-    this.displayDriver.handleZoomIn();
+    this.displayDriver.handleZoomIn(this.pointerPosition);
   }
 
   public handleZoomOut() {
-    this.displayDriver.handleZoomOut();
+    this.displayDriver.handleZoomOut(this.pointerPosition);
   }
 
   private handlePointerStart(p: Vector) {
